@@ -21,14 +21,17 @@ final recommendationsProvider = Provider<List<Recommendation>>((ref) {
   final recommendations = <Recommendation>[];
   final uid = user?.uid ?? '';
 
-  // 1. Check for Weakest Subject (< 65% accuracy)
+  // 1. Check for Weakest Subject (< 70% accuracy)
   if (subjectProgress.isNotEmpty) {
     for (final sp in subjectProgress) {
       final acc = (sp['accuracy'] as num?)?.toDouble() ?? 0.0;
+      final totalQ = (sp['totalQuestions'] as num?)?.toInt() ?? 0;
+      final correctQ = (sp['correctAnswers'] as num?)?.toInt() ?? 0;
       final subId = sp['id'] as String;
       final subObj = AppSubjects.getById(subId);
 
-      if (subObj != null && acc < 65.0) {
+      if (subObj != null && acc < 70.0 && totalQ > 0) {
+        final incorrect = totalQ - correctQ;
         recommendations.add(Recommendation(
           id: 'rec_weak_$subId',
           userId: uid,
@@ -36,31 +39,61 @@ final recommendationsProvider = Provider<List<Recommendation>>((ref) {
           subjectName: subObj.name,
           topic: 'Targeted Practice: ${subObj.name}',
           title: 'Strengthen ${subObj.shortName} Foundation',
-          reason: 'Your accuracy is currently ${acc.toInt()}%. A focused 10-question MCQ set will rapidly close the gap.',
+          reason: 'Your accuracy is currently ${acc.toInt()}% in ${subObj.name}.',
+          evidence: '$incorrect incorrect answers recorded across $totalQ attempted questions.',
+          actionLabel: 'Start 10-Question ${subObj.shortName} Quiz',
           actionType: 'practice',
           actionRoute: '/practice',
           accuracy: acc,
+          isPersonalized: true,
           createdAt: DateTime.now(),
         ));
       }
     }
   }
 
-  // 2. Add AI Tutor Doubt Solving Recommendation
+  // 2. Check for Enrolled Subjects with 0 Practice
+  if (userProfile != null && userProfile.enrolledSubjectIds.isNotEmpty) {
+    for (final subId in userProfile.enrolledSubjectIds) {
+      final hasProgress = subjectProgress.any((sp) => sp['id'] == subId);
+      final subObj = AppSubjects.getById(subId);
+      if (!hasProgress && subObj != null) {
+        recommendations.add(Recommendation(
+          id: 'rec_unstudied_$subId',
+          userId: uid,
+          subjectId: subId,
+          subjectName: subObj.name,
+          topic: 'Initial Assessment',
+          title: 'Assess Your ${subObj.shortName} Baseline',
+          reason: 'You enrolled in ${subObj.name} but haven\'t attempted a quiz yet.',
+          evidence: 'Zero quiz attempts logged in ${subObj.name}.',
+          actionLabel: 'Take 5-Question Diagnostic',
+          actionType: 'practice',
+          actionRoute: '/practice',
+          isPersonalized: true,
+          createdAt: DateTime.now(),
+        ));
+      }
+    }
+  }
+
+  // 3. General Helpful StudyMate Suggestions
   recommendations.add(Recommendation(
     id: 'rec_chat_tutor',
     userId: uid,
     subjectId: 'general',
     subjectName: 'AI Tutor',
     topic: 'Concept Clarification',
-    title: 'Ask AI Tutor tricky questions',
-    reason: 'Stuck on complex definitions or formulas? Switch to Student or Exam mode in AI Tutor for instant clarity.',
+    title: 'Ask AI Tutor Tricky Viva & Exam Questions',
+    reason: 'Stuck on complex definitions or formulas? Switch to Viva or Exam mode in AI Tutor for structured breakdown.',
+    evidence: 'Supports Beginner, Student, Exam, and Viva modes with real-world analogies.',
+    actionLabel: 'Open AI Tutor',
     actionType: 'chat',
     actionRoute: '/chat',
+    isPersonalized: false,
     createdAt: DateTime.now(),
   ));
 
-  // 3. Add Exam Summary Recommendation
   recommendations.add(Recommendation(
     id: 'rec_summary_notes',
     userId: uid,
@@ -68,23 +101,28 @@ final recommendationsProvider = Provider<List<Recommendation>>((ref) {
     subjectName: 'Smart Notes',
     topic: 'Exam Revision',
     title: 'Generate Exam-Focus Revision Summaries',
-    reason: 'Upload your semester syllabus or lecture slides to extract key terms, formulas, and high-weightage viva questions.',
+    reason: 'Upload your syllabus notes or PDF chapters to extract key terms, formulas, and high-yield revision questions.',
+    evidence: '5-section structured summary with instant quiz generator.',
+    actionLabel: 'Summarize Document',
     actionType: 'summary',
     actionRoute: '/summary',
+    isPersonalized: false,
     createdAt: DateTime.now(),
   ));
 
-  // 4. Add Weekly Study Planner Recommendation
   recommendations.add(Recommendation(
     id: 'rec_planner_schedule',
     userId: uid,
     subjectId: 'planner',
     subjectName: 'Study Schedule',
     topic: 'Time Management',
-    title: 'Organize your weekly study calendar',
-    reason: 'Balance your ${userProfile?.enrolledSubjectIds.length ?? 4} enrolled subjects with an AI timetable.',
+    title: 'Generate Your Weekly Study Timetable',
+    reason: 'Balance your study workload with a 7-day plan tailored to your daily goal.',
+    evidence: 'Generates morning/evening tasks with persistent checkboxes.',
+    actionLabel: 'View AI Planner',
     actionType: 'planner',
     actionRoute: '/planner',
+    isPersonalized: false,
     createdAt: DateTime.now(),
   ));
 
@@ -144,31 +182,79 @@ class RecommendationsScreen extends ConsumerWidget {
                               width: 36,
                               height: 36,
                               decoration: BoxDecoration(
-                                color: isDark ? AppColors.primary.withOpacity(0.2) : AppColors.primaryLight,
+                                color: rec.isPersonalized
+                                    ? AppColors.primary.withValues(alpha: 0.15)
+                                    : (isDark ? AppColors.darkSurface : AppColors.lightBackground),
                                 borderRadius: BorderRadius.circular(10),
                               ),
-                              child: Icon(getIcon(), color: AppColors.primary, size: 18),
+                              child: Icon(getIcon(), color: rec.isPersonalized ? AppColors.primary : AppColors.accentAmber, size: 18),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(rec.title, style: AppTextStyles.displayBold(context, fontSize: 15)),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(rec.title, style: AppTextStyles.displayBold(context, fontSize: 15)),
+                                      ),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                        decoration: BoxDecoration(
+                                          color: rec.isPersonalized
+                                              ? AppColors.accentAmber.withValues(alpha: 0.15)
+                                              : (isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                                          borderRadius: BorderRadius.circular(6),
+                                        ),
+                                        child: Text(
+                                          rec.isPersonalized ? 'Personalized' : 'Suggestion',
+                                          style: AppTextStyles.mono(
+                                            context,
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w700,
+                                            color: rec.isPersonalized ? AppColors.accentAmber : (isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                   Text(rec.subjectName, style: AppTextStyles.bodySecondary(context, fontSize: 12)),
                                 ],
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 12),
                         Text(
                           rec.reason,
                           style: AppTextStyles.body(context, fontSize: 13).copyWith(height: 1.4),
                         ),
+                        if (rec.evidence != null) ...[
+                          const SizedBox(height: 8),
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: isDark ? AppColors.darkBackground : AppColors.lightBackground,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(LucideIcons.info, size: 14, color: AppColors.primary),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(
+                                    'Evidence: ${rec.evidence}',
+                                    style: AppTextStyles.bodySecondary(context, fontSize: 11),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                         const SizedBox(height: 14),
                         CustomButton(
-                          text: 'Take Action Now',
+                          text: rec.actionLabel,
                           icon: LucideIcons.arrowRight,
                           onPressed: () {
                             if (rec.actionRoute == '/practice' || rec.actionRoute == '/chat') {

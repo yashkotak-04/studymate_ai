@@ -102,4 +102,45 @@ class UserRepository {
       'enrolledSubjectIds': FieldValue.arrayRemove([subjectId])
     });
   }
+
+  /// Permanently purges all user data across all subcollections and the user profile document.
+  Future<void> deleteEntireUserData(String uid) async {
+    final userRef = _users.doc(uid);
+
+    final subcollections = [
+      'quizzes',
+      'summaries',
+      'subjectProgress',
+      'dailyStats',
+      'activities',
+      'studyPlans',
+      'recommendations',
+      'aggregates',
+      'settings',
+    ];
+
+    for (final col in subcollections) {
+      try {
+        final snap = await userRef.collection(col).get();
+        for (final doc in snap.docs) {
+          await doc.reference.delete();
+        }
+      } catch (_) {}
+    }
+
+    // Delete chat threads and their nested messages
+    try {
+      final threads = await userRef.collection('chatThreads').get();
+      for (final t in threads.docs) {
+        final msgs = await t.reference.collection('messages').get();
+        for (final m in msgs.docs) {
+          await m.reference.delete();
+        }
+        await t.reference.delete();
+      }
+    } catch (_) {}
+
+    // Delete user profile document
+    await userRef.delete();
+  }
 }

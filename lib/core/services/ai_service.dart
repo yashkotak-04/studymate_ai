@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_ai/firebase_ai.dart';
 import '../../shared/models/chat_model.dart';
@@ -35,6 +36,22 @@ abstract interface class AiService {
 
   Future<GeneratedSummary> generateSummary({
     required String text,
+    String? subjectContext,
+  });
+
+  Future<GeneratedSummary> generateSummaryFromDocument({
+    Uint8List? documentBytes,
+    String? mimeType,
+    String? plainText,
+    String? subjectContext,
+  });
+
+  Future<List<QuizQuestion>> generateQuizFromDocument({
+    Uint8List? documentBytes,
+    String? mimeType,
+    String? plainText,
+    required String difficulty,
+    required int count,
     String? subjectContext,
   });
 
@@ -287,6 +304,121 @@ $processedText
         throw Exception('Failed to generate structured summary: $retryError');
       }
     }
+  }
+
+  @override
+  Future<GeneratedSummary> generateSummaryFromDocument({
+    Uint8List? documentBytes,
+    String? mimeType,
+    String? plainText,
+    String? subjectContext,
+  }) async {
+    _ensureModelsInitialized();
+
+    final prompt = '''
+Summarize the following study material document comprehensively for an engineering/diploma student.
+${subjectContext != null && subjectContext.isNotEmpty ? 'Subject Context: $subjectContext' : ''}
+
+Return ONLY valid JSON matching this exact structure:
+{
+  "quickSummary": "High-impact 2-3 sentence overview covering core premise.",
+  "importantPoints": [
+    "Key takeaway point 1",
+    "Key takeaway point 2",
+    "Key takeaway point 3"
+  ],
+  "keyTerms": [
+    "Term 1: Definition",
+    "Term 2: Definition",
+    "Term 3: Definition"
+  ],
+  "examFocus": [
+    "High-probability exam question area 1",
+    "Critical formula or concept to remember for exams"
+  ],
+  "revisionQuestions": [
+    "Conceptual review question 1?",
+    "Conceptual review question 2?"
+  ]
+}
+''';
+
+    Content content;
+    if (documentBytes != null && documentBytes.isNotEmpty && mimeType != null && mimeType.isNotEmpty) {
+      content = Content.multi([
+        TextPart(prompt),
+        InlineDataPart(mimeType, documentBytes),
+      ]);
+    } else if (plainText != null && plainText.isNotEmpty) {
+      final maxInput = _firebaseService.maxSummaryInput;
+      final processed = plainText.length > maxInput ? plainText.substring(0, maxInput) : plainText;
+      content = Content.text('$prompt\n\nStudy Material:\n$processed');
+    } else {
+      throw ArgumentError('Either documentBytes with mimeType or plainText must be provided.');
+    }
+
+    try {
+      final response = await _jsonModel!.generateContent([content]);
+      final rawText = response.text ?? '{}';
+      final cleanText = rawText.replaceAll('```json', '').replaceAll('```', '').trim();
+      final decoded = jsonDecode(cleanText) as Map<String, dynamic>;
+      return GeneratedSummary.fromJson(decoded);
+    } catch (e) {
+      throw Exception('Failed to generate structured summary from document: $e');
+    }
+  }
+
+  @override
+  Future<List<QuizQuestion>> generateQuizFromDocument({
+    Uint8List? documentBytes,
+    String? mimeType,
+    String? plainText,
+    required String difficulty,
+    required int count,
+    String? subjectContext,
+  }) async {
+    _ensureModelsInitialized();
+
+    final prompt = '''
+Generate exactly $count multiple-choice questions (MCQs) for an engineering/diploma student based on the provided document.
+Difficulty level: $difficulty.
+${subjectContext != null && subjectContext.isNotEmpty ? 'Subject Focus: $subjectContext' : ''}
+
+Each question MUST have:
+1. "question": clear question text
+2. "options": array of exactly 4 plausible option strings
+3. "correctIndex": integer index (0-3) indicating the correct option
+4. "explanation": 1-2 sentence explanation of why the correct answer is right
+
+Return ONLY a valid JSON array of objects.
+''';
+
+    Content content;
+    if (documentBytes != null && documentBytes.isNotEmpty && mimeType != null && mimeType.isNotEmpty) {
+      content = Content.multi([
+        TextPart(prompt),
+        InlineDataPart(mimeType, documentBytes),
+      ]);
+    } else if (plainText != null && plainText.isNotEmpty) {
+      final maxInput = _firebaseService.maxSummaryInput;
+      final processed = plainText.length > maxInput ? plainText.substring(0, maxInput) : plainText;
+      content = Content.text('$prompt\n\nSource Material:\n$processed');
+    } else {
+      throw ArgumentError('Either documentBytes with mimeType or plainText must be provided.');
+    }
+
+    try {
+      final response = await _jsonModel!.generateContent([content]);
+      final rawJson = response.text ?? '[]';
+      final questions = _parseQuestionsJson(rawJson);
+      if (questions.isNotEmpty) {
+        return questions;
+      }
+    } catch (e) {
+      throw Exception('Could not generate valid quiz questions from document: $e');
+    }
+
+    throw Exception('AI returned invalid quiz question format from document. Please try again.');
   }
 
   @override

@@ -35,7 +35,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final session = ref.read(currentQuizProvider);
       if (session != null && session.isMockTest) {
-        final totalSeconds = session.totalQuestions * 90; // 90 seconds per question
+        final totalSeconds = MockTestConfig.getDurationSeconds(session.totalQuestions);
         setState(() {
           _secondsRemaining = totalSeconds;
         });

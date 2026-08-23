@@ -52,33 +52,9 @@ class QuizRepository {
     return null;
   }
 
-  /// Idempotent quiz completion transaction: saves the session once using its stable ID
-  /// and atomically updates subject progress and daily stats / streak without duplicate increments.
-  Future<void> finalizeQuizSession(QuizSession session) async {
-    final quizRef = _firestore
-        .collection('users')
-        .doc(session.userId)
-        .collection('quizzes')
-        .doc(session.id);
-
-    final docSnap = await quizRef.get();
-    if (docSnap.exists) {
-      // Already finalized idempotently
-      return;
-    }
-
-    // Save quiz session
-    await quizRef.set(session.toJson());
-
-    // Update stats and streak atomically
-    await _progressRepository.logActivityAndCalculateStreak(
-      uid: session.userId,
-      subjectId: session.subjectId,
-      durationMinutes: session.durationMinutes,
-      score: session.score,
-      totalQuestions: session.totalQuestions,
-      isMockTest: session.isMockTest,
-    );
+  /// Idempotent, single-transaction quiz completion.
+  Future<bool> finalizeQuizSession(QuizSession session) async {
+    return await _progressRepository.finalizeQuizAtomic(session);
   }
 
   Future<void> deleteQuizSession(String userId, String quizId) async {

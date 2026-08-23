@@ -19,6 +19,15 @@ class DefaultFirebaseOptions {
     }
   }
 
+  static bool get isConfigured {
+    try {
+      final opts = currentPlatform;
+      return !opts.apiKey.contains('STUB') && !opts.projectId.contains('stub');
+    } catch (_) {
+      return false;
+    }
+  }
+
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'STUB_API_KEY_ANDROID',
     appId: '1:1234567890:android:abcdef0123456789',

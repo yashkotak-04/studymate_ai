@@ -86,12 +86,24 @@ class AuthRepository {
     }
   }
 
-  Future<void> deleteAccount() async {
+  Future<void> deleteAccount({String? passwordForReauth}) async {
     try {
       final user = _firebaseAuth.currentUser;
-      if (user != null) {
-        await user.delete();
+      if (user == null) return;
+
+      if (passwordForReauth != null && passwordForReauth.isNotEmpty && user.email != null) {
+        final cred = EmailAuthProvider.credential(
+          email: user.email!,
+          password: passwordForReauth,
+        );
+        await user.reauthenticateWithCredential(cred);
       }
+
+      // 1. Permanently delete all Firestore user data FIRST
+      await _userRepository.deleteEntireUserData(user.uid);
+
+      // 2. Permanently delete Auth identity
+      await user.delete();
     } on FirebaseAuthException catch (e) {
       throw getFriendlyAuthErrorMessage(e);
     } catch (e) {

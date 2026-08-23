@@ -60,6 +60,11 @@ service cloud.firestore {
         allow read, write: if isOwner(userId);
       }
 
+      // Aggregates for All-Time Analytics
+      match /aggregates/{aggregateId} {
+        allow read, write: if isOwner(userId);
+      }
+
       // Settings and Preferences
       match /settings/{settingId} {
         allow read, write: if isOwner(userId);

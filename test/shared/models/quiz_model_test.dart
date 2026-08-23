@@ -58,9 +58,16 @@ void main() {
         questions: [],
       );
 
-      expect(session.accuracy, equals(80.0));
-      expect(session.durationMinutes, equals(15));
+      expect(session.accuracy, 80.0);
+      expect(session.durationMinutes, 15);
       expect(session.isMockTest, isFalse);
+    });
+
+    test('MockTestConfig calculates duration minutes and seconds consistently', () {
+      expect(MockTestConfig.getDurationMinutes(10), 20);
+      expect(MockTestConfig.getDurationSeconds(10), 1200);
+      expect(MockTestConfig.getDurationMinutes(5), 10);
+      expect(MockTestConfig.getDurationSeconds(5), 600);
     });
   });
 }

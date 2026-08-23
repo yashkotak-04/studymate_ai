@@ -30,7 +30,6 @@ class _McqSetupScreenState extends ConsumerState<McqSetupScreen> {
   int _count = 5;
   bool _isGenerating = false;
   bool _isMockTest = false;
-  final int _mockTestTimerMinutes = 20;
 
   @override
   void dispose() {
@@ -70,7 +69,7 @@ class _McqSetupScreenState extends ConsumerState<McqSetupScreen> {
         isMockTest: _isMockTest,
         isCompleted: false,
         startTime: DateTime.now(),
-        endTime: DateTime.now().add(Duration(minutes: _isMockTest ? _mockTestTimerMinutes : 10)),
+        endTime: DateTime.now().add(Duration(minutes: _isMockTest ? MockTestConfig.getDurationMinutes(_count) : 10)),
         questions: questions,
       );
 
@@ -117,7 +116,7 @@ class _McqSetupScreenState extends ConsumerState<McqSetupScreen> {
                 padding: const EdgeInsets.all(14),
                 child: SwitchListTile(
                   title: Text('Mock Test Mode', style: AppTextStyles.body(context, fontWeight: FontWeight.w700)),
-                  subtitle: Text('Full-length timed exam across all syllabus subjects', style: AppTextStyles.bodySecondary(context, fontSize: 12)),
+                  subtitle: Text('Full-length timed exam across all syllabus subjects (${MockTestConfig.getDurationMinutes(_count)} min)', style: AppTextStyles.bodySecondary(context, fontSize: 12)),
                   value: _isMockTest,
                   activeColor: AppColors.primary,
                   contentPadding: EdgeInsets.zero,
@@ -125,7 +124,7 @@ class _McqSetupScreenState extends ConsumerState<McqSetupScreen> {
                     setState(() {
                       _isMockTest = val;
                       if (val) {
-                        _count = 10;
+                        _count = MockTestConfig.defaultQuestionCount;
                       } else {
                         _count = 5;
                       }
@@ -188,8 +187,8 @@ class _McqSetupScreenState extends ConsumerState<McqSetupScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Mock Exam Timer: $_mockTestTimerMinutes Minutes', style: AppTextStyles.body(context, fontWeight: FontWeight.w700)),
-                            Text('Test will automatically submit when the countdown ends.', style: AppTextStyles.bodySecondary(context, fontSize: 12)),
+                            Text('Mock Exam Timer: ${MockTestConfig.getDurationMinutes(_count)} Minutes', style: AppTextStyles.body(context, fontWeight: FontWeight.w700)),
+                            Text('Test will automatically submit when the countdown ends (${MockTestConfig.minutesPerQuestion}m/question).', style: AppTextStyles.bodySecondary(context, fontSize: 12)),
                           ],
                         ),
                       ),

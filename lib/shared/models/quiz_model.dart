@@ -201,3 +201,13 @@ class QuizSession {
     );
   }
 }
+
+/// Canonical single-source-of-truth configuration for Mock Tests
+class MockTestConfig {
+  static const int defaultQuestionCount = 10;
+  static const int minutesPerQuestion = 2; // 2 minutes per question
+
+  static int getDurationMinutes(int questionCount) => (questionCount * minutesPerQuestion).clamp(5, 60);
+  static int getDurationSeconds(int questionCount) => getDurationMinutes(questionCount) * 60;
+}
+

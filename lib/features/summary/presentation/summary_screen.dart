@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -8,9 +9,10 @@ import '../../../core/services/ai_service.dart';
 import '../../../core/services/firebase_service.dart';
 import '../../../shared/widgets/custom_button.dart';
 import '../../../shared/widgets/custom_card.dart';
+import '../../../shared/widgets/custom_chip.dart';
 import '../../../shared/widgets/screen_header.dart';
-import '../../../app/theme/app_colors.dart';
-import '../../../app/theme/text_styles.dart';
+import '../../../shared/theme/app_colors.dart';
+import '../../../shared/theme/text_styles.dart';
 import '../../../shared/models/summary_model.dart';
 import '../../../shared/models/quiz_model.dart';
 import '../../auth/data/auth_repository.dart';
@@ -29,6 +31,8 @@ class _SummaryScreenState extends ConsumerState<SummaryScreen> {
   bool _isGenerating = false;
   bool _isUploadingPdf = false;
   String? _pickedFileName;
+  Uint8List? _pickedFileBytes;
+  String? _pickedFileMimeType;
   GeneratedSummary? _result;
   String _activeSourceText = '';
 
@@ -42,7 +46,7 @@ class _SummaryScreenState extends ConsumerState<SummaryScreen> {
     try {
       final files = await FilePickerPlatform.instance.pickFiles(
         type: FileType.custom,
-        allowedExtensions: ['pdf', 'txt', 'doc', 'docx'],
+        allowedExtensions: ['pdf', 'txt'],
       );
 
       if (files == null || files.isEmpty) return;
@@ -50,19 +54,33 @@ class _SummaryScreenState extends ConsumerState<SummaryScreen> {
       final file = files.first;
       final maxMb = ref.read(firebaseServiceProvider).maxPdfSizeMb;
 
-      if (file.path != null) {
-        final f = File(file.path!);
-        if (await f.exists()) {
-          final fileSize = await f.length();
-          if (fileSize > maxMb * 1024 * 1024) {
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('File exceeds the ${maxMb}MB limit. Please upload a smaller document.')),
-              );
-            }
-            return;
-          }
+      if (file.path == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Could not access selected file path.')),
+          );
         }
+        return;
+      }
+
+      final f = File(file.path!);
+      if (!await f.exists()) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Selected file does not exist on disk.')),
+          );
+        }
+        return;
+      }
+
+      final fileSize = await f.length();
+      if (fileSize > maxMb * 1024 * 1024) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('File size (${(fileSize / (1024 * 1024)).toStringAsFixed(1)}MB) exceeds the ${maxMb}MB limit.')),
+          );
+        }
+        return;
       }
 
       setState(() {
@@ -70,32 +88,36 @@ class _SummaryScreenState extends ConsumerState<SummaryScreen> {
         _pickedFileName = file.name;
       });
 
-      String extractedText = '';
-      if (file.path != null) {
-        final f = File(file.path!);
-        if (await f.exists()) {
-          try {
-            extractedText = await f.readAsString();
-          } catch (_) {
-            extractedText = 'Document: ${file.name}\n(Content extracted from PDF study notes for ${file.name})';
-          }
+      final extension = file.name.split('.').last.toLowerCase();
+      if (extension == 'pdf') {
+        final bytes = await f.readAsBytes();
+        if (bytes.isEmpty) {
+          throw Exception('The selected PDF document is empty.');
         }
+        _pickedFileBytes = bytes;
+        _pickedFileMimeType = 'application/pdf';
+        _textController.text = '[PDF Document: ${file.name} (${(bytes.lengthInBytes / 1024).toStringAsFixed(1)} KB) - Ready for AI summarization & quiz generation]';
+      } else if (extension == 'txt') {
+        final text = await f.readAsString();
+        if (text.trim().isEmpty) {
+          throw Exception('The text file is empty.');
+        }
+        _pickedFileBytes = null;
+        _pickedFileMimeType = null;
+        _textController.text = text;
+      } else {
+        throw Exception('Unsupported file format. Please upload a PDF or TXT file.');
       }
 
-      if (extractedText.trim().isEmpty) {
-        extractedText = 'Comprehensive study notes on ${file.name.replaceAll('.pdf', '')}.';
-      }
-
-      _textController.text = extractedText;
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Loaded ${file.name} successfully!')),
+          SnackBar(content: Text('Loaded ${file.name} successfully! Ready to summarize.')),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not read document: $e')),
+          SnackBar(content: Text('Failed to read document: ${e.toString().replaceAll('Exception:', '').trim()}')),
         );
       }
     } finally {
@@ -106,10 +128,12 @@ class _SummaryScreenState extends ConsumerState<SummaryScreen> {
   }
 
   Future<void> _generateSummary() async {
+    final hasBytes = _pickedFileBytes != null && _pickedFileBytes!.isNotEmpty;
     final text = _textController.text.trim();
-    if (text.isEmpty) {
+
+    if (!hasBytes && text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please paste some text or upload a document.')),
+        const SnackBar(content: Text('Please paste some text notes or upload a document.')),
       );
       return;
     }
@@ -121,7 +145,16 @@ class _SummaryScreenState extends ConsumerState<SummaryScreen> {
 
     try {
       final aiService = ref.read(aiServiceProvider);
-      final summary = await aiService.generateSummary(text: text);
+      GeneratedSummary summary;
+
+      if (hasBytes) {
+        summary = await aiService.generateSummaryFromDocument(
+          documentBytes: _pickedFileBytes,
+          mimeType: _pickedFileMimeType ?? 'application/pdf',
+        );
+      } else {
+        summary = await aiService.generateSummary(text: text);
+      }
 
       if (mounted) {
         setState(() {
@@ -136,7 +169,7 @@ class _SummaryScreenState extends ConsumerState<SummaryScreen> {
           id: 'summary_${DateTime.now().millisecondsSinceEpoch}',
           userId: authUser.uid,
           title: title,
-          sourceText: text.length > 1000 ? '${text.substring(0, 1000)}...' : text,
+          sourceText: hasBytes ? 'Uploaded PDF: $_pickedFileName' : (text.length > 1000 ? '${text.substring(0, 1000)}...' : text),
           summary: summary,
           createdAt: DateTime.now(),
         );
@@ -157,21 +190,33 @@ class _SummaryScreenState extends ConsumerState<SummaryScreen> {
   }
 
   Future<void> _generateQuizFromCurrentSummary() async {
-    if (_activeSourceText.isEmpty && _result == null) return;
-    final contextText = _activeSourceText.isNotEmpty
-        ? _activeSourceText
-        : '${_result!.quickSummary}\n${_result!.importantPoints.join("\n")}';
+    final hasBytes = _pickedFileBytes != null && _pickedFileBytes!.isNotEmpty;
+    if (!hasBytes && _activeSourceText.isEmpty && _result == null) return;
 
     setState(() => _isGenerating = true);
     final user = ref.read(authRepositoryProvider).currentUser;
 
     try {
       final aiService = ref.read(aiServiceProvider);
-      final questions = await aiService.generateQuizFromText(
-        content: contextText,
-        difficulty: 'Medium',
-        count: 5,
-      );
+      List<QuizQuestion> questions;
+
+      if (hasBytes) {
+        questions = await aiService.generateQuizFromDocument(
+          documentBytes: _pickedFileBytes,
+          mimeType: _pickedFileMimeType ?? 'application/pdf',
+          difficulty: 'Medium',
+          count: 5,
+        );
+      } else {
+        final contextText = _activeSourceText.isNotEmpty
+            ? _activeSourceText
+            : '${_result!.quickSummary}\n${_result!.importantPoints.join("\n")}';
+        questions = await aiService.generateQuizFromText(
+          content: contextText,
+          difficulty: 'Medium',
+          count: 5,
+        );
+      }
 
       final session = QuizSession(
         id: 'quiz_sum_${DateTime.now().millisecondsSinceEpoch}',

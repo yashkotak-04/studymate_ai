@@ -30,6 +30,7 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen> {
     final dailyStatsAsync = ref.watch(dailyStatsProvider);
     final subjectProgressAsync = ref.watch(subjectProgressProvider);
     final quizHistoryAsync = ref.watch(userQuizHistoryProvider);
+    final allTimeAggAsync = ref.watch(allTimeAggregatesProvider);
 
     final quizzes = quizHistoryAsync.value ?? [];
     final now = DateTime.now();
@@ -44,8 +45,12 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen> {
       return true;
     }).toList();
 
-    // Compute Metrics safely (no NaN / division by zero)
-    final totalQuizzes = filteredQuizzes.length;
+    // Chronological order for trend visualization
+    final chronologicalQuizzes = List<QuizSession>.from(filteredQuizzes)
+      ..sort((a, b) => a.endTime.compareTo(b.endTime));
+
+    // Compute Metrics safely
+    int totalQuizzes = filteredQuizzes.length;
     int totalQuestions = 0;
     int totalCorrect = 0;
 
@@ -54,7 +59,15 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen> {
       totalCorrect += q.score;
     }
 
-    final double avgAccuracy = totalQuestions > 0 ? (totalCorrect / totalQuestions) * 100.0 : 0.0;
+    double avgAccuracy = totalQuestions > 0 ? (totalCorrect / totalQuestions) * 100.0 : 0.0;
+
+    if (_selectedFilter == TimeFilter.allTime) {
+      final aggData = allTimeAggAsync.value ?? {};
+      if (aggData.isNotEmpty && (aggData['totalQuizzes'] as num? ?? 0) > 0) {
+        totalQuizzes = (aggData['totalQuizzes'] as num?)?.toInt() ?? totalQuizzes;
+        avgAccuracy = (aggData['accuracy'] as num?)?.toDouble() ?? avgAccuracy;
+      }
+    }
 
     // Find Strongest and Weakest Subjects
     final subjectProgressList = subjectProgressAsync.value ?? [];
@@ -230,6 +243,115 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen> {
                   ],
                 ),
               ),
+              const SizedBox(height: 20),
+
+              // Score Trend Line Chart
+              Text('Score Trend Over Time', style: AppTextStyles.displayBold(context, fontSize: 16)),
+              const SizedBox(height: 10),
+
+              if (chronologicalQuizzes.isEmpty)
+                const CustomCard(
+                  child: Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(20.0),
+                      child: Text('No quiz attempts in this period. Take a quiz to view your score trend!'),
+                    ),
+                  ),
+                )
+              else
+                CustomCard(
+                  child: SizedBox(
+                    height: 200,
+                    child: LineChart(
+                      LineChartData(
+                        minY: 0,
+                        maxY: 100,
+                        lineTouchData: LineTouchData(
+                          touchTooltipData: LineTouchTooltipData(
+                            getTooltipItems: (touchedSpots) {
+                              return touchedSpots.map((spot) {
+                                final idx = spot.x.toInt();
+                                if (idx >= 0 && idx < chronologicalQuizzes.length) {
+                                  final q = chronologicalQuizzes[idx];
+                                  return LineTooltipItem(
+                                    '${q.topic}\nScore: ${spot.y.toInt()}%',
+                                    const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11),
+                                  );
+                                }
+                                return null;
+                              }).toList();
+                            },
+                          ),
+                        ),
+                        gridData: FlGridData(
+                          show: true,
+                          drawVerticalLine: false,
+                          getDrawingHorizontalLine: (val) => FlLine(
+                            color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                            strokeWidth: 0.8,
+                          ),
+                        ),
+                        titlesData: FlTitlesData(
+                          show: true,
+                          leftTitles: AxisTitles(
+                            sideTitles: SideTitles(
+                              showTitles: true,
+                              getTitlesWidget: (value, meta) {
+                                if (value % 25 != 0) return const SizedBox();
+                                return Text('${value.toInt()}%', style: AppTextStyles.monoBold(context, fontSize: 10));
+                              },
+                              reservedSize: 34,
+                            ),
+                          ),
+                          bottomTitles: AxisTitles(
+                            sideTitles: SideTitles(
+                              showTitles: true,
+                              getTitlesWidget: (value, meta) {
+                                final idx = value.toInt();
+                                if (idx >= 0 && idx < chronologicalQuizzes.length) {
+                                  return Padding(
+                                    padding: const EdgeInsets.only(top: 6.0),
+                                    child: Text('Q${idx + 1}', style: AppTextStyles.mono(context, fontSize: 10)),
+                                  );
+                                }
+                                return const SizedBox();
+                              },
+                              reservedSize: 22,
+                            ),
+                          ),
+                          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                        ),
+                        borderData: FlBorderData(show: false),
+                        lineBarsData: [
+                          LineChartBarData(
+                            spots: List.generate(
+                              chronologicalQuizzes.length,
+                              (i) => FlSpot(i.toDouble(), chronologicalQuizzes[i].accuracy),
+                            ),
+                            isCurved: chronologicalQuizzes.length > 1,
+                            color: AppColors.primary,
+                            barWidth: 3,
+                            isStrokeCapRound: true,
+                            dotData: FlDotData(
+                              show: true,
+                              getDotPainter: (spot, percent, barData, index) => FlDotCirclePainter(
+                                radius: 4,
+                                color: AppColors.primary,
+                                strokeWidth: 2,
+                                strokeColor: Colors.white,
+                              ),
+                            ),
+                            belowBarData: BarAreaData(
+                              show: true,
+                              color: AppColors.primary.withValues(alpha: 0.12),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
               const SizedBox(height: 20),
 
               // Subject Mastery Bar Chart

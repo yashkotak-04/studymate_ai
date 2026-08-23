@@ -8,9 +8,12 @@ class Recommendation {
   final String topic;
   final String title;
   final String reason;
+  final String? evidence;
+  final String actionLabel;
   final String actionType; // 'practice', 'chat', 'summary', 'mock_test'
   final String actionRoute;
   final double? accuracy;
+  final bool isPersonalized;
   final bool isCompleted;
   final DateTime createdAt;
 
@@ -22,9 +25,12 @@ class Recommendation {
     required this.topic,
     required this.title,
     required this.reason,
+    this.evidence,
+    this.actionLabel = 'Start Practice',
     this.actionType = 'practice',
     this.actionRoute = '/practice',
     this.accuracy,
+    this.isPersonalized = true,
     this.isCompleted = false,
     required this.createdAt,
   });
@@ -45,9 +51,12 @@ class Recommendation {
       topic: json['topic'] as String? ?? 'Concept Mastery',
       title: json['title'] as String? ?? 'Focus Practice Recommended',
       reason: json['reason'] as String? ?? 'Based on recent performance and study pace.',
+      evidence: json['evidence'] as String?,
+      actionLabel: json['actionLabel'] as String? ?? 'Start Practice',
       actionType: json['actionType'] as String? ?? 'practice',
       actionRoute: json['actionRoute'] as String? ?? '/practice',
       accuracy: (json['accuracy'] as num?)?.toDouble(),
+      isPersonalized: json['isPersonalized'] as bool? ?? true,
       isCompleted: json['isCompleted'] as bool? ?? false,
       createdAt: parseDate(json['createdAt']),
     );
@@ -61,9 +70,12 @@ class Recommendation {
       'topic': topic,
       'title': title,
       'reason': reason,
+      if (evidence != null) 'evidence': evidence,
+      'actionLabel': actionLabel,
       'actionType': actionType,
       'actionRoute': actionRoute,
       if (accuracy != null) 'accuracy': accuracy,
+      'isPersonalized': isPersonalized,
       'isCompleted': isCompleted,
       'createdAt': Timestamp.fromDate(createdAt),
     };

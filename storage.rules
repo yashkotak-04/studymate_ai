@@ -7,23 +7,21 @@ service firebase.storage {
       return request.auth != null;
     }
     
-    // Limit to exactly 5MB
+    // Limit to 10MB matching Remote Config
     function isValidSize() {
-      return request.resource.size <= 5 * 1024 * 1024;
+      return request.resource.size <= 10 * 1024 * 1024;
     }
     
-    // Only allow specific content types (e.g., PDF)
-    function isPdf() {
-      return request.resource.contentType.matches('application/pdf');
+    // Allow PDF, text, and images
+    function isAllowedContentType() {
+      return request.resource.contentType.matches('application/pdf') ||
+             request.resource.contentType.matches('text/plain') ||
+             request.resource.contentType.matches('image/.*');
     }
 
     match /users/{userId}/{allPaths=**} {
-      allow read, write: if isAuthenticated() && request.auth.uid == userId;
-    }
-    
-    match /uploads/{userId}/{document=**} {
       allow read: if isAuthenticated() && request.auth.uid == userId;
-      allow write: if isAuthenticated() && request.auth.uid == userId && isValidSize() && isPdf();
+      allow write: if isAuthenticated() && request.auth.uid == userId && isValidSize() && isAllowedContentType();
     }
   }
 }

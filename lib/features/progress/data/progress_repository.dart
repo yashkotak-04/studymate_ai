@@ -20,6 +20,12 @@ final subjectProgressProvider = StreamProvider<List<Map<String, dynamic>>>((ref)
   return ref.watch(progressRepositoryProvider).streamSubjectProgress(user.uid);
 });
 
+final allTimeAggregatesProvider = StreamProvider<Map<String, dynamic>>((ref) {
+  final user = ref.watch(authStateProvider).value;
+  if (user == null) return Stream.value({});
+  return ref.watch(progressRepositoryProvider).streamAllTimeAggregates(user.uid);
+});
+
 class ProgressRepository {
   final FirebaseFirestore _firestore;
 
@@ -27,46 +33,93 @@ class ProgressRepository {
 
   String _getTodayKey() => DateFormat('yyyy-MM-dd').format(DateTime.now());
 
-  /// Log activity and update streak and daily goal transactionally
-  Future<void> logActivityAndCalculateStreak({
-    required String uid,
-    required String subjectId,
-    required int durationMinutes,
-    required int score,
-    required int totalQuestions,
-    bool isMockTest = false,
-  }) async {
-    final userRef = _firestore.collection('users').doc(uid);
+  /// Genuinely atomic, single-transaction quiz completion.
+  /// Guarantees that saving the quiz attempt, updating subject progress,
+  /// updating daily stats, recording activity, updating streak, and updating
+  /// all-time durable aggregates happen in ONE single ACID transaction.
+  /// If the quiz was already finalized, returns immediately without double-counting.
+  Future<bool> finalizeQuizAtomic(QuizSession session) async {
+    final userRef = _firestore.collection('users').doc(session.userId);
+    final quizRef = userRef.collection('quizzes').doc(session.id);
     final todayKey = _getTodayKey();
     final dailyStatsRef = userRef.collection('dailyStats').doc(todayKey);
-    final activityRef = userRef.collection('activities').doc();
+    final activityRef = userRef.collection('activities').doc(session.id);
+    final aggregateRef = userRef.collection('aggregates').doc('quizStats');
 
-    await _firestore.runTransaction((transaction) async {
+    return await _firestore.runTransaction<bool>((transaction) async {
+      // 1. Check idempotency: if quiz already exists and completed, abort safely
+      final quizDoc = await transaction.get(quizRef);
+      if (quizDoc.exists) {
+        return false; // Already finalized idempotently
+      }
+
+      // 2. Read User profile
       final userDoc = await transaction.get(userRef);
-      if (!userDoc.exists) return;
+      int currentStreak = 0;
+      int longestStreak = 0;
+      String? lastStudyDateStr;
+      int dailyGoal = 30;
 
-      final userData = userDoc.data()!;
-      int currentStreak = (userData['currentStreak'] as num?)?.toInt() ?? 0;
-      int longestStreak = (userData['longestStreak'] as num?)?.toInt() ?? 0;
-      String? lastStudyDateStr = userData['lastStudyDate'] as String?;
-      int dailyGoal = (userData['dailyStudyGoalMinutes'] as num?)?.toInt() ?? 30;
+      if (userDoc.exists && userDoc.data() != null) {
+        final userData = userDoc.data()!;
+        currentStreak = (userData['currentStreak'] as num?)?.toInt() ?? 0;
+        longestStreak = (userData['longestStreak'] as num?)?.toInt() ?? 0;
+        lastStudyDateStr = userData['lastStudyDate'] as String?;
+        dailyGoal = (userData['dailyStudyGoalMinutes'] as num?)?.toInt() ?? 30;
+      }
 
+      // 3. Read Daily Stats
+      final dailyDoc = await transaction.get(dailyStatsRef);
+      int todayMinutes = session.durationMinutes;
+      int todayQuizzes = 1;
+      if (dailyDoc.exists && dailyDoc.data() != null) {
+        todayMinutes += (dailyDoc.data()!['minutesStudied'] as num?)?.toInt() ?? 0;
+        todayQuizzes += (dailyDoc.data()!['quizzesCompleted'] as num?)?.toInt() ?? 0;
+      }
+      bool goalMet = todayMinutes >= dailyGoal;
+
+      // 4. Read Subject Progress (if not mock test)
+      DocumentReference<Map<String, dynamic>>? subjectProgressRef;
+      DocumentSnapshot<Map<String, dynamic>>? subjectDoc;
+      final isRealSubject = !session.isMockTest && AppSubjects.getById(session.subjectId) != null;
+      if (isRealSubject) {
+        subjectProgressRef = userRef.collection('subjectProgress').doc(session.subjectId);
+        subjectDoc = await transaction.get(subjectProgressRef);
+      }
+
+      // 5. Read Durable Aggregates (All-Time)
+      final aggDoc = await transaction.get(aggregateRef);
+      int aggTotalQuizzes = 0;
+      int aggTotalQuestions = 0;
+      int aggCorrectAnswers = 0;
+      int aggTotalMinutes = 0;
+
+      if (aggDoc.exists && aggDoc.data() != null) {
+        final d = aggDoc.data()!;
+        aggTotalQuizzes = (d['totalQuizzes'] as num?)?.toInt() ?? 0;
+        aggTotalQuestions = (d['totalQuestions'] as num?)?.toInt() ?? 0;
+        aggCorrectAnswers = (d['correctAnswers'] as num?)?.toInt() ?? 0;
+        aggTotalMinutes = (d['totalMinutesStudied'] as num?)?.toInt() ?? 0;
+      }
+
+      aggTotalQuizzes += 1;
+      aggTotalQuestions += session.totalQuestions;
+      aggCorrectAnswers += session.score;
+      aggTotalMinutes += session.durationMinutes;
+      final aggAccuracy = aggTotalQuestions > 0 ? (aggCorrectAnswers / aggTotalQuestions) * 100.0 : 0.0;
+
+      // 6. Calculate Streak
       DateTime today = DateTime.parse(todayKey);
-
       if (lastStudyDateStr != null) {
-        DateTime lastStudyDate = DateTime.parse(lastStudyDateStr);
+        DateTime lastStudyDate = DateTime.tryParse(lastStudyDateStr) ?? today;
         final difference = today.difference(lastStudyDate).inDays;
 
         if (difference == 1) {
-          // Consecutive day
           currentStreak++;
         } else if (difference > 1) {
-          // Streak broken
           currentStreak = 1;
         }
-        // difference == 0: already studied today, keep streak
       } else {
-        // First study session
         currentStreak = 1;
       }
 
@@ -74,16 +127,12 @@ class ProgressRepository {
         longestStreak = currentStreak;
       }
 
-      // Update daily stats
-      final dailyDoc = await transaction.get(dailyStatsRef);
-      int todayMinutes = durationMinutes;
-      int todayQuizzes = 1;
-      if (dailyDoc.exists) {
-        todayMinutes += (dailyDoc.data()!['minutesStudied'] as num?)?.toInt() ?? 0;
-        todayQuizzes += (dailyDoc.data()!['quizzesCompleted'] as num?)?.toInt() ?? 0;
-      }
-      bool goalMet = todayMinutes >= dailyGoal;
+      // --- WRITES ---
 
+      // Write Quiz Document
+      transaction.set(quizRef, session.toJson());
+
+      // Write Daily Stats
       transaction.set(dailyStatsRef, {
         'minutesStudied': todayMinutes,
         'quizzesCompleted': todayQuizzes,
@@ -92,48 +141,63 @@ class ProgressRepository {
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
 
-      // Record Activity Log
+      // Write Activity Log
       transaction.set(activityRef, {
-        'subjectId': subjectId,
-        'durationMinutes': durationMinutes,
-        'score': score,
-        'totalQuestions': totalQuestions,
-        'isMockTest': isMockTest,
+        'subjectId': session.subjectId,
+        'durationMinutes': session.durationMinutes,
+        'score': session.score,
+        'totalQuestions': session.totalQuestions,
+        'accuracy': session.accuracy,
+        'isMockTest': session.isMockTest,
         'timestamp': FieldValue.serverTimestamp(),
         'date': todayKey,
       });
 
-      // Update Subject Progress ONLY for legitimate subjects, not mock_test
-      if (!isMockTest && AppSubjects.getById(subjectId) != null) {
-        final subjectProgressRef = userRef.collection('subjectProgress').doc(subjectId);
-        final subjectDoc = await transaction.get(subjectProgressRef);
-        int totalQuizzes = 1;
-        int subjectScore = score;
-        int subjectTotalQuestions = totalQuestions;
+      // Write Subject Progress
+      if (isRealSubject && subjectProgressRef != null) {
+        int subQuizzes = 1;
+        int subScore = session.score;
+        int subTotalQuestions = session.totalQuestions;
 
-        if (subjectDoc.exists) {
+        if (subjectDoc != null && subjectDoc.exists && subjectDoc.data() != null) {
           final subData = subjectDoc.data()!;
-          totalQuizzes += (subData['totalQuizzes'] as num?)?.toInt() ?? 0;
-          subjectScore += (subData['correctAnswers'] as num?)?.toInt() ?? 0;
-          subjectTotalQuestions += (subData['totalQuestions'] as num?)?.toInt() ?? 0;
+          subQuizzes += (subData['totalQuizzes'] as num?)?.toInt() ?? 0;
+          subScore += (subData['correctAnswers'] as num?)?.toInt() ?? 0;
+          subTotalQuestions += (subData['totalQuestions'] as num?)?.toInt() ?? 0;
         }
 
+        final subAccuracy = subTotalQuestions > 0 ? (subScore / subTotalQuestions) * 100.0 : 0.0;
+
         transaction.set(subjectProgressRef, {
-          'totalQuizzes': totalQuizzes,
-          'correctAnswers': subjectScore,
-          'totalQuestions': subjectTotalQuestions,
-          'accuracy': subjectTotalQuestions > 0 ? (subjectScore / subjectTotalQuestions) * 100 : 0,
+          'totalQuizzes': subQuizzes,
+          'correctAnswers': subScore,
+          'totalQuestions': subTotalQuestions,
+          'accuracy': subAccuracy,
           'lastStudiedAt': FieldValue.serverTimestamp(),
         }, SetOptions(merge: true));
       }
 
-      // Update User Streak
-      transaction.update(userRef, {
-        'currentStreak': currentStreak,
-        'longestStreak': longestStreak,
-        'lastStudyDate': todayKey,
-        'lastActiveAt': FieldValue.serverTimestamp(),
-      });
+      // Write Durable All-Time Aggregates
+      transaction.set(aggregateRef, {
+        'totalQuizzes': aggTotalQuizzes,
+        'totalQuestions': aggTotalQuestions,
+        'correctAnswers': aggCorrectAnswers,
+        'totalMinutesStudied': aggTotalMinutes,
+        'accuracy': aggAccuracy,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
+      // Update User streak
+      if (userDoc.exists) {
+        transaction.update(userRef, {
+          'currentStreak': currentStreak,
+          'longestStreak': longestStreak,
+          'lastStudyDate': todayKey,
+          'lastActiveAt': FieldValue.serverTimestamp(),
+        });
+      }
+
+      return true;
     });
   }
 
@@ -146,6 +210,22 @@ class ProgressRepository {
         .doc(todayKey)
         .snapshots()
         .map((doc) => doc.exists ? doc.data()! : {'minutesStudied': 0, 'goalMet': false});
+  }
+
+  Stream<Map<String, dynamic>> streamAllTimeAggregates(String uid) {
+    return _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('aggregates')
+        .doc('quizStats')
+        .snapshots()
+        .map((doc) => doc.exists ? doc.data()! : {
+              'totalQuizzes': 0,
+              'totalQuestions': 0,
+              'correctAnswers': 0,
+              'totalMinutesStudied': 0,
+              'accuracy': 0.0,
+            });
   }
 
   Stream<List<Map<String, dynamic>>> streamSubjectProgress(String uid) {
