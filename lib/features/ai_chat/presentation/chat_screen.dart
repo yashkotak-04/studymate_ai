@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import '../../../core/services/ai_service.dart';
-import '../../../core/services/firebase_service.dart';
 import '../../../shared/models/chat_model.dart';
 import '../../../shared/models/subject.dart';
 import '../../../shared/widgets/screen_header.dart';
@@ -113,7 +112,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
   }
 
-  Future<void> _sendMessage(String text, {bool isContextAction = false}) async {
+  Future<void> _sendMessage(String text) async {
     final query = text.trim();
     if (query.isEmpty || _isTyping) return;
 
@@ -128,85 +127,76 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     _inputController.clear();
     setState(() => _isTyping = true);
 
-    String? currentThreadId = ref.read(activeThreadIdProvider);
+    final threadRepo = ref.read(chatRepositoryProvider);
+    var activeThreadId = ref.read(activeThreadIdProvider);
     final subjectId = ref.read(selectedChatSubjectProvider);
     final mode = ref.read(activeExplanationModeProvider);
-    final chatRepo = ref.read(chatRepositoryProvider);
 
-    // Create a new thread if none is active
-    if (currentThreadId == null) {
-      final title = query.length > 35 ? '${query.substring(0, 35)}...' : query;
-      currentThreadId = await chatRepo.createThread(
+    if (activeThreadId == null) {
+      activeThreadId = await threadRepo.createThread(
         user.uid,
         subjectId,
-        title,
+        query.length > 30 ? '${query.substring(0, 30)}...' : query,
         mode: mode,
       );
-      ref.read(activeThreadIdProvider.notifier).state = currentThreadId;
-      ref.read(firebaseServiceProvider).logChatStarted(mode.label);
+      ref.read(activeThreadIdProvider.notifier).state = activeThreadId;
     }
 
-    // Persist user message
-    final userMsg = ChatMessage(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      role: 'user',
-      text: query,
-      timestamp: DateTime.now(),
+    await threadRepo.addMessage(
+      user.uid,
+      activeThreadId,
+      ChatMessage(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        role: 'user',
+        text: query,
+        timestamp: DateTime.now(),
+      ),
     );
-    await chatRepo.addMessage(user.uid, currentThreadId, userMsg);
 
-    // Stream AI response
+    final currentMessages =
+        ref.read(threadMessagesProvider(activeThreadId)).value ?? [];
+    final aiService = ref.read(aiServiceProvider);
+    final responseBuffer = StringBuffer();
+
     try {
-      final aiService = ref.read(aiServiceProvider);
-      final subjectObj = AppSubjects.getById(subjectId);
-
-      // Fetch latest messages for context
-      final messagesAsync =
-          ref.read(threadMessagesProvider(currentThreadId)).value ?? [userMsg];
-
       final stream = aiService.streamChat(
         prompt: query,
         mode: mode,
-        history: messagesAsync,
-        subjectContext: subjectObj?.name,
+        history: currentMessages,
+        subjectContext: AppSubjects.getById(subjectId)?.name,
       );
 
-      setState(() => _currentStreamedResponse = '');
       await for (final chunk in stream) {
-        if (!mounted) break;
-        setState(() {
-          _currentStreamedResponse += chunk;
-        });
-        _scrollToBottom();
+        responseBuffer.write(chunk);
       }
 
-      // Persist completed AI message
-      if (mounted && _currentStreamedResponse.isNotEmpty) {
-        final aiMsg = ChatMessage(
+      await threadRepo.addMessage(
+        user.uid,
+        activeThreadId,
+        ChatMessage(
           id: DateTime.now().millisecondsSinceEpoch.toString(),
           role: 'model',
-          text: _currentStreamedResponse,
+          text: responseBuffer.toString().isNotEmpty
+              ? responseBuffer.toString()
+              : 'I am here to help you study! Please feel free to ask any question.',
           timestamp: DateTime.now(),
-        );
-        await chatRepo.addMessage(user.uid, currentThreadId, aiMsg);
-      }
+        ),
+      );
     } catch (e) {
-      if (mounted) {
-        final errorMsg = ChatMessage(
+      await threadRepo.addMessage(
+        user.uid,
+        activeThreadId,
+        ChatMessage(
           id: DateTime.now().millisecondsSinceEpoch.toString(),
           role: 'model',
           text:
-              'Unable to reach AI Tutor. Please check your network connection and try again.',
+              'Unable to generate AI response. Please verify your connection or try a shorter prompt.',
           timestamp: DateTime.now(),
-        );
-        await chatRepo.addMessage(user.uid, currentThreadId, errorMsg);
-      }
+        ),
+      );
     } finally {
       if (mounted) {
-        setState(() {
-          _isTyping = false;
-          _currentStreamedResponse = '';
-        });
+        setState(() => _isTyping = false);
         _scrollToBottom();
       }
     }
@@ -219,20 +209,24 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       orElse: () => messages.last,
     );
 
+    final snippet = lastModelMessage.text.length > 150
+        ? '${lastModelMessage.text.substring(0, 150)}...'
+        : lastModelMessage.text;
+
     switch (action) {
       case 'Explain Simpler':
         _sendMessage(
-          'Can you explain the previous concept in much simpler, intuitive terms with an everyday analogy?',
+          'Can you explain this previous concept in much simpler, intuitive terms with an everyday analogy? Focus: "$snippet"',
         );
         break;
       case 'Give Example':
         _sendMessage(
-          'Please provide a concrete practical code or calculation example of this.',
+          'Please provide a concrete practical code or numerical calculation example illustrating this: "$snippet"',
         );
         break;
-      case 'Real-world Analogy':
+      case 'Exam Tips':
         _sendMessage(
-          'Can you provide a vivid real-world engineering analogy for this?',
+          'What are the most probable viva questions and high-weightage exam questions for this concept?',
         );
         break;
       case 'Generate MCQs':

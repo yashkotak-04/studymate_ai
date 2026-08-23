@@ -10,6 +10,7 @@ import '../../../shared/widgets/custom_button.dart';
 import '../../../core/services/ai_service.dart';
 import '../../../core/services/firebase_service.dart';
 import '../../../shared/models/study_plan_model.dart';
+import '../../../shared/models/subject.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../profile/data/user_repository.dart';
 import '../../progress/data/progress_repository.dart';
@@ -35,7 +36,11 @@ class _PlannerScreenState extends ConsumerState<PlannerScreen> {
     setState(() => _isGenerating = true);
 
     try {
-      final enrolled = profile?.enrolledSubjectIds ?? ['os', 'py', 'db', 'net'];
+      final enrolled =
+          (profile?.enrolledSubjectIds != null &&
+              profile!.enrolledSubjectIds.isNotEmpty)
+          ? profile.enrolledSubjectIds
+          : AppSubjects.availableSubjects.map((s) => s.id).toList();
       final targetExam = profile?.targetExam ?? 'Semester Finals';
       final dailyGoal = profile?.dailyStudyGoalMinutes ?? 30;
 
@@ -57,6 +62,7 @@ class _PlannerScreenState extends ConsumerState<PlannerScreen> {
         dailyGoalMinutes: dailyGoal,
         enrolledSubjects: enrolled,
         weakSubjects: weakSubjects,
+        examDate: profile?.examDate,
       );
 
       await ref.read(studyPlanRepositoryProvider).savePlan(plan);

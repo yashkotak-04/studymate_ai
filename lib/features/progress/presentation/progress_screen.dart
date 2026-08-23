@@ -14,6 +14,59 @@ import '../../../shared/models/quiz_model.dart';
 
 enum TimeFilter { week, month, allTime }
 
+class DateRangeWindow {
+  final DateTime startInclusive;
+  final DateTime endExclusive;
+
+  const DateRangeWindow({
+    required this.startInclusive,
+    required this.endExclusive,
+  });
+
+  bool contains(DateTime date) {
+    return (date.isAtSameMomentAs(startInclusive) ||
+            date.isAfter(startInclusive)) &&
+        date.isBefore(endExclusive);
+  }
+
+  static DateRangeWindow forFilter(
+    TimeFilter filter, [
+    DateTime? referenceNow,
+  ]) {
+    final now = referenceNow ?? DateTime.now();
+    final endExclusive = now.add(const Duration(milliseconds: 1));
+
+    switch (filter) {
+      case TimeFilter.week:
+        final startInclusive = DateTime(
+          now.year,
+          now.month,
+          now.day,
+        ).subtract(const Duration(days: 6));
+        return DateRangeWindow(
+          startInclusive: startInclusive,
+          endExclusive: endExclusive,
+        );
+      case TimeFilter.month:
+        final startInclusive = DateTime(
+          now.year,
+          now.month,
+          now.day,
+        ).subtract(const Duration(days: 29));
+        return DateRangeWindow(
+          startInclusive: startInclusive,
+          endExclusive: endExclusive,
+        );
+      case TimeFilter.allTime:
+        final startInclusive = DateTime(2020, 1, 1);
+        return DateRangeWindow(
+          startInclusive: startInclusive,
+          endExclusive: endExclusive,
+        );
+    }
+  }
+}
+
 class ProgressScreen extends ConsumerStatefulWidget {
   const ProgressScreen({super.key});
 
@@ -28,23 +81,21 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen> {
   Widget build(BuildContext context) {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
     final userProfile = ref.watch(currentUserProfileProvider).value;
-    final dailyStatsAsync = ref.watch(dailyStatsProvider);
     final subjectProgressAsync = ref.watch(subjectProgressProvider);
     final quizHistoryAsync = ref.watch(userQuizHistoryProvider);
     final allTimeAggAsync = ref.watch(allTimeAggregatesProvider);
     final allDailyStatsAsync = ref.watch(allDailyStatsProvider);
 
     final quizzes = quizHistoryAsync.value ?? [];
-    final now = DateTime.now();
+    final dateWindow = DateRangeWindow.forFilter(_selectedFilter);
 
-    // Filter quizzes based on selected time window
+    // Filter quizzes strictly within canonical startInclusive and endExclusive
+    // (excludes future-dated records and enforces window boundaries)
     final filteredQuizzes = quizzes.where((q) {
-      if (_selectedFilter == TimeFilter.week) {
-        return now.difference(q.endTime).inDays <= 7;
-      } else if (_selectedFilter == TimeFilter.month) {
-        return now.difference(q.endTime).inDays <= 30;
+      if (_selectedFilter == TimeFilter.allTime) {
+        return q.endTime.isBefore(dateWindow.endExclusive);
       }
-      return true;
+      return dateWindow.contains(q.endTime);
     }).toList();
 
     // Chronological order for trend visualization
@@ -74,39 +125,27 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen> {
       }
     }
 
-    // Period-specific Study Time calculation
+    // Period-specific Study Time calculation using DateRangeWindow
     final allDailyStats = allDailyStatsAsync.value ?? [];
     int studyTimeMinutes = 0;
-    if (_selectedFilter == TimeFilter.week) {
-      for (final ds in allDailyStats) {
-        final dateStr = ds['date'] as String?;
-        if (dateStr != null) {
-          try {
-            final dt = DateTime.parse(dateStr);
-            if (now.difference(dt).inDays <= 7) {
-              studyTimeMinutes += (ds['minutesStudied'] as num?)?.toInt() ?? 0;
-            }
-          } catch (_) {}
-        }
-      }
-    } else if (_selectedFilter == TimeFilter.month) {
-      for (final ds in allDailyStats) {
-        final dateStr = ds['date'] as String?;
-        if (dateStr != null) {
-          try {
-            final dt = DateTime.parse(dateStr);
-            if (now.difference(dt).inDays <= 30) {
-              studyTimeMinutes += (ds['minutesStudied'] as num?)?.toInt() ?? 0;
-            }
-          } catch (_) {}
-        }
-      }
-    } else {
+    if (_selectedFilter == TimeFilter.allTime) {
       final aggData = allTimeAggAsync.value ?? {};
       studyTimeMinutes = (aggData['totalMinutesStudied'] as num?)?.toInt() ?? 0;
       if (studyTimeMinutes == 0) {
         for (final ds in allDailyStats) {
           studyTimeMinutes += (ds['minutesStudied'] as num?)?.toInt() ?? 0;
+        }
+      }
+    } else {
+      for (final ds in allDailyStats) {
+        final dateStr = ds['date'] as String?;
+        if (dateStr != null) {
+          try {
+            final dt = DateTime.parse(dateStr);
+            if (dateWindow.contains(dt)) {
+              studyTimeMinutes += (ds['minutesStudied'] as num?)?.toInt() ?? 0;
+            }
+          } catch (_) {}
         }
       }
     }

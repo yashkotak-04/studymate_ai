@@ -4,11 +4,10 @@ import 'package:integration_test/integration_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:studymate_ai/app/theme/app_theme.dart';
 import 'package:studymate_ai/features/auth/presentation/login_screen.dart';
+import 'package:studymate_ai/features/practice/presentation/mcq_setup_screen.dart';
 import 'package:studymate_ai/features/practice/presentation/quiz_screen.dart';
-import 'package:studymate_ai/features/summary/presentation/summary_screen.dart';
 import 'package:studymate_ai/features/recommendations/presentation/recommendations_screen.dart';
 import 'package:studymate_ai/shared/models/quiz_model.dart';
-import 'package:studymate_ai/features/practice/data/quiz_repository.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
@@ -41,7 +40,6 @@ void main() {
       (tester) async {
         final mockQuestions = [
           QuizQuestion(
-            id: 'q1',
             question: 'What is a Semaphore in OS?',
             options: [
               'A synchronization tool',
@@ -53,7 +51,6 @@ void main() {
             explanation: 'Semaphores are synchronization tools.',
           ),
           QuizQuestion(
-            id: 'q2',
             question: 'What is ACID in Database Management?',
             options: [
               'A chemical compound',
@@ -67,14 +64,25 @@ void main() {
           ),
         ];
 
+        final mockSession = QuizSession(
+          id: 'test_session_1',
+          userId: 'test_user',
+          subjectId: 'os',
+          topic: 'Processes',
+          difficulty: 'Medium',
+          totalQuestions: mockQuestions.length,
+          score: 0,
+          startTime: DateTime.now(),
+          endTime: DateTime.now().add(const Duration(minutes: 5)),
+          questions: mockQuestions,
+        );
+
         await tester.pumpWidget(
           ProviderScope(
-            overrides: [
-              activeQuizQuestionsProvider.overrideWith((ref) => mockQuestions),
-            ],
+            overrides: [currentQuizProvider.overrideWith((ref) => mockSession)],
             child: MaterialApp(
               theme: AppTheme.lightTheme,
-              home: const QuizScreen(subjectId: 'os', topic: 'Processes'),
+              home: const QuizScreen(),
             ),
           ),
         );

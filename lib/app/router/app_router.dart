@@ -113,7 +113,18 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: '/practice',
-                builder: (context, state) => const McqSetupScreen(),
+                builder: (context, state) {
+                  final extra = state.extra;
+                  if (extra is Map<String, dynamic>) {
+                    return McqSetupScreen(
+                      initialSubjectId: extra['subjectId'] as String?,
+                      initialTopic: extra['topic'] as String?,
+                      initialCount: extra['count'] as int?,
+                      isMock: extra['isMock'] as bool?,
+                    );
+                  }
+                  return const McqSetupScreen();
+                },
               ),
             ],
           ),

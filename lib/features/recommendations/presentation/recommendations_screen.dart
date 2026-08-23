@@ -357,9 +357,18 @@ class RecommendationsScreen extends ConsumerWidget {
                           text: rec.actionLabel,
                           icon: LucideIcons.arrowRight,
                           onPressed: () {
-                            if (rec.actionRoute == '/practice' ||
-                                rec.actionRoute == '/chat') {
-                              context.go(rec.actionRoute);
+                            if (rec.actionRoute == '/practice') {
+                              context.go(
+                                '/practice',
+                                extra: {
+                                  'subjectId': rec.subjectId,
+                                  'topic': rec.topic,
+                                  'count': rec.actionType == 'mock' ? 20 : 10,
+                                  'isMock': rec.actionType == 'mock',
+                                },
+                              );
+                            } else if (rec.actionRoute == '/chat') {
+                              context.go('/chat');
                             } else {
                               context.push(rec.actionRoute);
                             }

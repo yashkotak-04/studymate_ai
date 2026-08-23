@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_ai/firebase_ai.dart';
@@ -14,6 +13,28 @@ final aiServiceProvider = Provider<AiService>((ref) {
   final firebaseService = ref.watch(firebaseServiceProvider);
   return FirebaseAiService(firebaseService);
 });
+
+class AiDisabledException implements Exception {
+  final String message;
+  const AiDisabledException([
+    this.message =
+        'AI features are temporarily unavailable. Your saved study content is still accessible.',
+  ]);
+
+  @override
+  String toString() => message;
+}
+
+class AiQuizGenerationException implements Exception {
+  final String message;
+  const AiQuizGenerationException([
+    this.message =
+        'Could not generate the requested quiz questions. Please try again.',
+  ]);
+
+  @override
+  String toString() => message;
+}
 
 abstract interface class AiService {
   Stream<String> streamChat({
@@ -63,6 +84,7 @@ abstract interface class AiService {
     required int dailyGoalMinutes,
     required List<String> enrolledSubjects,
     required List<String> weakSubjects,
+    DateTime? examDate,
   });
 
   Future<String> simplifyExplanation(String previousAnswer);
@@ -78,7 +100,14 @@ class FirebaseAiService implements AiService {
 
   FirebaseAiService(this._firebaseService);
 
+  void _checkAiEnabled() {
+    if (!_firebaseService.aiEnabled) {
+      throw const AiDisabledException();
+    }
+  }
+
   void _ensureModelsInitialized() {
+    _checkAiEnabled();
     final currentModelName = _firebaseService.aiModelName;
     if (_chatModel == null || _cachedModelName != currentModelName) {
       _cachedModelName = currentModelName.isNotEmpty
@@ -88,11 +117,18 @@ class FirebaseAiService implements AiService {
       try {
         _chatModel = FirebaseAI.googleAI().generativeModel(
           model: _cachedModelName,
+          systemInstruction: Content.system(
+            'You are StudyMate AI, an expert, encouraging, and rigorous academic tutor for engineering, diploma, and exam students. '
+            'Always explain clearly, use structured Markdown, and provide deep conceptual clarity.',
+          ),
         );
         _jsonModel = FirebaseAI.googleAI().generativeModel(
           model: _cachedModelName,
           generationConfig: GenerationConfig(
             responseMimeType: 'application/json',
+          ),
+          systemInstruction: Content.system(
+            'You are StudyMate AI JSON Engine. Output strictly valid JSON without any markdown formatting or commentary.',
           ),
         );
       } catch (e, stack) {
@@ -114,25 +150,31 @@ class FirebaseAiService implements AiService {
     }
   }
 
+  int _clampCount(int requested) {
+    final maxAllowed = _firebaseService.maxMcqCount;
+    if (requested <= 0) return 5;
+    if (requested > maxAllowed) return maxAllowed;
+    return requested;
+  }
+
   @override
   Stream<String> streamChat({
     required String prompt,
     required ExplanationMode mode,
     required List<ChatMessage> history,
     String? subjectContext,
-  }) {
+  }) async* {
+    if (!_firebaseService.aiEnabled) {
+      yield 'AI features are temporarily unavailable. Your saved study content is still accessible.';
+      return;
+    }
+
     _ensureModelsInitialized();
 
     final systemInstruction = StringBuffer();
-    systemInstruction.writeln('You are an expert AI Tutor for StudyMate AI.');
-    if (subjectContext != null && subjectContext.isNotEmpty) {
-      systemInstruction.writeln('Subject Focus: $subjectContext');
-    }
+    systemInstruction.writeln('Subject Focus: ${subjectContext ?? "General"}');
     systemInstruction.writeln('Explanation Mode: ${mode.label}');
     systemInstruction.writeln('Mode Directive: ${mode.systemPrompt}');
-    systemInstruction.writeln(
-      'Formatting instructions: Use clean Markdown with bold keywords, bullet points where helpful, and concise equations or code blocks where applicable.',
-    );
 
     // Limit context history to Remote Config limit
     final maxHistory = _firebaseService.maxChatContextMessages;
@@ -140,7 +182,6 @@ class FirebaseAiService implements AiService {
         ? history.sublist(history.length - maxHistory)
         : history;
 
-    // Convert domain ChatMessage objects into Firebase AI Content
     final contentHistory = trimmedHistory.map((m) {
       if (m.role == 'user') {
         return Content.text(m.text);
@@ -151,13 +192,15 @@ class FirebaseAiService implements AiService {
 
     final chat = _chatModel!.startChat(history: contentHistory);
 
-    return chat
-        .sendMessageStream(
-          Content.text(
-            '${systemInstruction.toString()}\n\nUser Question: $prompt',
-          ),
-        )
-        .map((response) => response.text ?? '');
+    final stream = chat.sendMessageStream(
+      Content.text(
+        '${systemInstruction.toString()}\n\nStudent Question: $prompt',
+      ),
+    );
+
+    await for (final response in stream) {
+      yield response.text ?? '';
+    }
   }
 
   @override
@@ -167,17 +210,24 @@ class FirebaseAiService implements AiService {
     required String difficulty,
     required int count,
   }) async {
+    _checkAiEnabled();
     _ensureModelsInitialized();
+    final targetCount = _clampCount(count);
 
     final prompt =
         '''
-Generate exactly $count multiple-choice questions for the subject "$subject" on the topic "$topic" at a "$difficulty" difficulty level.
-Each question MUST have exactly 4 non-empty options, a valid correctIndex (0, 1, 2, or 3), and a clear, informative explanation.
+Generate exactly $targetCount multiple-choice questions for the subject "$subject" on the topic "$topic" at a "$difficulty" difficulty level.
+Rules:
+1. Exactly $targetCount questions in the output array.
+2. Every question must be distinct and non-empty.
+3. Every question must contain exactly 4 unique non-empty options.
+4. correctIndex must be an integer between 0 and 3.
+5. Provide a detailed, pedagogical explanation for why the correct option is right.
 
-Return ONLY a valid JSON array matching this exact schema:
+Return ONLY a valid JSON array matching this schema:
 [
   {
-    "question": "Clear question text?",
+    "question": "Question text?",
     "options": ["Option A", "Option B", "Option C", "Option D"],
     "correctIndex": 0,
     "explanation": "Why this specific option is correct."
@@ -185,7 +235,7 @@ Return ONLY a valid JSON array matching this exact schema:
 ]
 ''';
 
-    return _generateAndValidateQuestions(prompt, count);
+    return _generateAndValidateQuestions(prompt, targetCount);
   }
 
   @override
@@ -194,12 +244,18 @@ Return ONLY a valid JSON array matching this exact schema:
     required String difficulty,
     required int count,
   }) async {
+    _checkAiEnabled();
     _ensureModelsInitialized();
+    final targetCount = _clampCount(count);
 
     final prompt =
         '''
-Analyze the provided study text and generate exactly $count multiple-choice questions at a "$difficulty" difficulty level based directly on the key concepts in the text.
-Each question MUST have exactly 4 options, a correctIndex (0, 1, 2, or 3), and an explanation referencing the text.
+Analyze the provided study text and generate exactly $targetCount multiple-choice questions at a "$difficulty" difficulty level based directly on the key concepts in the text.
+Rules:
+1. Exactly $targetCount questions in the output array.
+2. Every question must contain exactly 4 unique non-empty options.
+3. correctIndex must be an integer between 0 and 3.
+4. Provide an explanation referencing the text.
 
 Study Text:
 $content
@@ -207,7 +263,7 @@ $content
 Return ONLY a valid JSON array matching this schema:
 [
   {
-    "question": "Question text based on document?",
+    "question": "Question text based on text?",
     "options": ["Option A", "Option B", "Option C", "Option D"],
     "correctIndex": 0,
     "explanation": "Detailed explanation."
@@ -215,7 +271,70 @@ Return ONLY a valid JSON array matching this schema:
 ]
 ''';
 
-    return _generateAndValidateQuestions(prompt, count);
+    return _generateAndValidateQuestions(prompt, targetCount);
+  }
+
+  @override
+  Future<List<QuizQuestion>> generateQuizFromDocument({
+    Uint8List? documentBytes,
+    String? mimeType,
+    String? plainText,
+    required String difficulty,
+    required int count,
+    String? subjectContext,
+  }) async {
+    _checkAiEnabled();
+    _ensureModelsInitialized();
+    final targetCount = _clampCount(count);
+
+    final prompt =
+        '''
+Generate exactly $targetCount multiple-choice questions (MCQs) for an engineering/diploma student based on the provided document.
+Difficulty level: $difficulty.
+${subjectContext != null && subjectContext.isNotEmpty ? 'Subject Focus: $subjectContext' : ''}
+
+Rules:
+1. Exactly $targetCount questions in the output array.
+2. Every question must have exactly 4 unique non-empty options.
+3. correctIndex must be 0, 1, 2, or 3.
+4. Clear explanation for each answer.
+
+Return ONLY a valid JSON array of objects.
+''';
+
+    if (documentBytes != null &&
+        documentBytes.isNotEmpty &&
+        mimeType != null &&
+        mimeType.isNotEmpty) {
+      final content = Content.multi([
+        TextPart(prompt),
+        InlineDataPart(mimeType, documentBytes),
+      ]);
+
+      try {
+        final response = await _jsonModel!.generateContent([content]);
+        final questions = _parseQuestionsJson(
+          response.text ?? '[]',
+          targetCount,
+        );
+        if (questions.length == targetCount) {
+          return questions;
+        }
+      } catch (_) {}
+
+      // Controlled retry with plain prompt
+      return _generateAndValidateQuestions(prompt, targetCount);
+    } else if (plainText != null && plainText.isNotEmpty) {
+      return generateQuizFromText(
+        content: plainText,
+        difficulty: difficulty,
+        count: targetCount,
+      );
+    } else {
+      throw ArgumentError(
+        'Either documentBytes or plainText must be provided.',
+      );
+    }
   }
 
   Future<List<QuizQuestion>> _generateAndValidateQuestions(
@@ -227,35 +346,40 @@ Return ONLY a valid JSON array matching this schema:
         Content.text(prompt),
       ]);
       final rawText = response.text ?? '[]';
-      final questions = _parseQuestionsJson(rawText);
+      final questions = _parseQuestionsJson(rawText, requestedCount);
 
-      if (questions.isNotEmpty) {
+      if (questions.length == requestedCount) {
         return questions;
       }
     } catch (_) {}
 
-    // One controlled retry attempt
+    // One controlled retry attempt with explicit count emphasis
     try {
       final retryResponse = await _jsonModel!.generateContent([
         Content.text(
-          '$prompt\n\nCRITICAL: Return strictly valid JSON array of objects with question, options (length 4), correctIndex (0-3), explanation.',
+          '$prompt\n\nCRITICAL REQUIREMENT: Output EXACTLY $requestedCount distinct question objects with 4 unique options each and valid correctIndex (0..3).',
         ),
       ]);
       final rawRetry = retryResponse.text ?? '[]';
-      final retryQuestions = _parseQuestionsJson(rawRetry);
-      if (retryQuestions.isNotEmpty) {
+      final retryQuestions = _parseQuestionsJson(rawRetry, requestedCount);
+
+      if (retryQuestions.length == requestedCount) {
         return retryQuestions;
+      } else if (retryQuestions.length > requestedCount) {
+        return retryQuestions.sublist(0, requestedCount);
       }
     } catch (e) {
-      throw Exception('Could not generate valid quiz questions from AI: $e');
+      throw AiQuizGenerationException(
+        'Could not generate valid quiz questions from AI: $e',
+      );
     }
 
-    throw Exception(
-      'AI returned invalid quiz question format. Please try again with a refined topic.',
+    throw const AiQuizGenerationException(
+      'AI returned an invalid question set. Please try again with a refined topic.',
     );
   }
 
-  List<QuizQuestion> _parseQuestionsJson(String rawJson) {
+  List<QuizQuestion> _parseQuestionsJson(String rawJson, int targetCount) {
     try {
       final cleanText = rawJson
           .replaceAll('```json', '')
@@ -263,11 +387,26 @@ Return ONLY a valid JSON array matching this schema:
           .trim();
       final decoded = jsonDecode(cleanText);
       if (decoded is List) {
-        final parsed = decoded
-            .map((e) => QuizQuestion.fromJson(e as Map<String, dynamic>))
-            .where((q) => q.isValid)
-            .toList();
-        return parsed;
+        final List<QuizQuestion> validList = [];
+        final Set<String> seenQuestions = {};
+
+        for (final item in decoded) {
+          if (item is Map<String, dynamic>) {
+            final q = QuizQuestion.fromJson(item);
+            final normalized = q.question.trim().toLowerCase();
+            final uniqueOptions = q.options
+                .map((o) => o.trim().toLowerCase())
+                .toSet();
+
+            if (q.isValid &&
+                !seenQuestions.contains(normalized) &&
+                uniqueOptions.length == 4) {
+              seenQuestions.add(normalized);
+              validList.add(q);
+            }
+          }
+        }
+        return validList;
       }
     } catch (_) {}
     return [];
@@ -278,12 +417,15 @@ Return ONLY a valid JSON array matching this schema:
     required String text,
     String? subjectContext,
   }) async {
+    _checkAiEnabled();
     _ensureModelsInitialized();
 
     final maxInput = _firebaseService.maxSummaryInput;
-    final processedText = text.length > maxInput
-        ? text.substring(0, maxInput)
-        : text;
+
+    // Handle chunking if text exceeds single-request limit
+    if (text.length > maxInput) {
+      return _generateChunkedSummary(text, subjectContext);
+    }
 
     final prompt =
         '''
@@ -314,38 +456,71 @@ Return ONLY valid JSON matching this exact structure:
 }
 
 Study Material:
-$processedText
+$text
 ''';
 
     try {
       final response = await _jsonModel!.generateContent([
         Content.text(prompt),
       ]);
-      final rawText = response.text ?? '{}';
-      final cleanText = rawText
-          .replaceAll('```json', '')
-          .replaceAll('```', '')
-          .trim();
-      final decoded = jsonDecode(cleanText) as Map<String, dynamic>;
-      return GeneratedSummary.fromJson(decoded);
+      return _parseSummaryJson(response.text ?? '{}');
     } catch (e) {
-      // Retry once with strict prompt
+      // Retry once
       try {
         final retry = await _jsonModel!.generateContent([
           Content.text(
             '$prompt\n\nEnsure valid JSON object with quickSummary, importantPoints, keyTerms, examFocus, revisionQuestions.',
           ),
         ]);
-        final cleanRetry = (retry.text ?? '{}')
-            .replaceAll('```json', '')
-            .replaceAll('```', '')
-            .trim();
-        final decoded = jsonDecode(cleanRetry) as Map<String, dynamic>;
-        return GeneratedSummary.fromJson(decoded);
+        return _parseSummaryJson(retry.text ?? '{}');
       } catch (retryError) {
         throw Exception('Failed to generate structured summary: $retryError');
       }
     }
+  }
+
+  Future<GeneratedSummary> _generateChunkedSummary(
+    String fullText,
+    String? subjectContext,
+  ) async {
+    final chunkSize = _firebaseService.maxSummaryInput ~/ 2;
+    final chunks = <String>[];
+
+    for (var i = 0; i < fullText.length; i += chunkSize) {
+      final end = (i + chunkSize < fullText.length)
+          ? i + chunkSize
+          : fullText.length;
+      chunks.add(fullText.substring(i, end));
+    }
+
+    final intermediatePoints = <String>[];
+    for (final chunk in chunks) {
+      try {
+        final prompt =
+            'Extract the top 3 essential key takeaway points from this notes excerpt:\n\n$chunk';
+        final res = await _chatModel!.generateContent([Content.text(prompt)]);
+        if (res.text != null && res.text!.isNotEmpty) {
+          intermediatePoints.add(res.text!);
+        }
+      } catch (_) {}
+    }
+
+    final combinedText = intermediatePoints.join('\n\n');
+    return generateSummary(
+      text: combinedText.isNotEmpty
+          ? combinedText
+          : fullText.substring(0, 5000),
+      subjectContext: subjectContext,
+    );
+  }
+
+  GeneratedSummary _parseSummaryJson(String rawJson) {
+    final cleanText = rawJson
+        .replaceAll('```json', '')
+        .replaceAll('```', '')
+        .trim();
+    final decoded = jsonDecode(cleanText) as Map<String, dynamic>;
+    return GeneratedSummary.fromJson(decoded);
   }
 
   @override
@@ -355,6 +530,7 @@ $processedText
     String? plainText,
     String? subjectContext,
   }) async {
+    _checkAiEnabled();
     _ensureModelsInitialized();
 
     final prompt =
@@ -386,106 +562,30 @@ Return ONLY valid JSON matching this exact structure:
 }
 ''';
 
-    Content content;
     if (documentBytes != null &&
         documentBytes.isNotEmpty &&
         mimeType != null &&
         mimeType.isNotEmpty) {
-      content = Content.multi([
+      final content = Content.multi([
         TextPart(prompt),
         InlineDataPart(mimeType, documentBytes),
       ]);
-    } else if (plainText != null && plainText.isNotEmpty) {
-      final maxInput = _firebaseService.maxSummaryInput;
-      final processed = plainText.length > maxInput
-          ? plainText.substring(0, maxInput)
-          : plainText;
-      content = Content.text('$prompt\n\nStudy Material:\n$processed');
-    } else {
-      throw ArgumentError(
-        'Either documentBytes with mimeType or plainText must be provided.',
-      );
-    }
 
-    try {
-      final response = await _jsonModel!.generateContent([content]);
-      final rawText = response.text ?? '{}';
-      final cleanText = rawText
-          .replaceAll('```json', '')
-          .replaceAll('```', '')
-          .trim();
-      final decoded = jsonDecode(cleanText) as Map<String, dynamic>;
-      return GeneratedSummary.fromJson(decoded);
-    } catch (e) {
-      throw Exception(
-        'Failed to generate structured summary from document: $e',
-      );
-    }
-  }
-
-  @override
-  Future<List<QuizQuestion>> generateQuizFromDocument({
-    Uint8List? documentBytes,
-    String? mimeType,
-    String? plainText,
-    required String difficulty,
-    required int count,
-    String? subjectContext,
-  }) async {
-    _ensureModelsInitialized();
-
-    final prompt =
-        '''
-Generate exactly $count multiple-choice questions (MCQs) for an engineering/diploma student based on the provided document.
-Difficulty level: $difficulty.
-${subjectContext != null && subjectContext.isNotEmpty ? 'Subject Focus: $subjectContext' : ''}
-
-Each question MUST have:
-1. "question": clear question text
-2. "options": array of exactly 4 plausible option strings
-3. "correctIndex": integer index (0-3) indicating the correct option
-4. "explanation": 1-2 sentence explanation of why the correct answer is right
-
-Return ONLY a valid JSON array of objects.
-''';
-
-    Content content;
-    if (documentBytes != null &&
-        documentBytes.isNotEmpty &&
-        mimeType != null &&
-        mimeType.isNotEmpty) {
-      content = Content.multi([
-        TextPart(prompt),
-        InlineDataPart(mimeType, documentBytes),
-      ]);
-    } else if (plainText != null && plainText.isNotEmpty) {
-      final maxInput = _firebaseService.maxSummaryInput;
-      final processed = plainText.length > maxInput
-          ? plainText.substring(0, maxInput)
-          : plainText;
-      content = Content.text('$prompt\n\nSource Material:\n$processed');
-    } else {
-      throw ArgumentError(
-        'Either documentBytes with mimeType or plainText must be provided.',
-      );
-    }
-
-    try {
-      final response = await _jsonModel!.generateContent([content]);
-      final rawJson = response.text ?? '[]';
-      final questions = _parseQuestionsJson(rawJson);
-      if (questions.isNotEmpty) {
-        return questions;
+      try {
+        final response = await _jsonModel!.generateContent([content]);
+        return _parseSummaryJson(response.text ?? '{}');
+      } catch (e) {
+        throw Exception(
+          'Failed to generate structured summary from document: $e',
+        );
       }
-    } catch (e) {
-      throw Exception(
-        'Could not generate valid quiz questions from document: $e',
+    } else if (plainText != null && plainText.isNotEmpty) {
+      return generateSummary(text: plainText, subjectContext: subjectContext);
+    } else {
+      throw ArgumentError(
+        'Either documentBytes with mimeType or plainText must be provided.',
       );
     }
-
-    throw Exception(
-      'AI returned invalid quiz question format from document. Please try again.',
-    );
   }
 
   @override
@@ -495,39 +595,40 @@ Return ONLY a valid JSON array of objects.
     required int dailyGoalMinutes,
     required List<String> enrolledSubjects,
     required List<String> weakSubjects,
+    DateTime? examDate,
   }) async {
+    _checkAiEnabled();
     _ensureModelsInitialized();
+
+    final daysRemaining = examDate != null
+        ? examDate.difference(DateTime.now()).inDays
+        : 30;
 
     final prompt =
         '''
-Create a structured 7-day study plan (Monday through Sunday) for a student preparing for "$targetExam".
-Daily Study Goal: $dailyGoalMinutes minutes per day.
+Create a realistic 7-day study plan for an engineering student preparing for "$targetExam" (Days until exam: $daysRemaining).
+Daily Study Goal: $dailyGoalMinutes minutes.
 Enrolled Subjects: ${enrolledSubjects.join(', ')}
-Weak Focus Areas / Subjects: ${weakSubjects.isNotEmpty ? weakSubjects.join(', ') : 'All enrolled subjects equally'}
+Weak Focus Areas (prioritize these): ${weakSubjects.join(', ')}
 
-Return ONLY a valid JSON object matching this exact schema:
+Return ONLY a valid JSON object matching this schema:
 {
-  "overview": "Brief 1-2 sentence motivating summary of this week's strategy",
+  "title": "7-Day Strategic Preparation Plan",
+  "targetExam": "$targetExam",
+  "startDate": "${DateTime.now().toIso8601String()}",
+  "endDate": "${DateTime.now().add(const Duration(days: 7)).toIso8601String()}",
   "days": [
     {
-      "dayName": "Monday",
-      "focus": "Operating Systems & Concurrency",
+      "dayNumber": 1,
+      "date": "${DateTime.now().toIso8601String()}",
+      "focusSubject": "os",
       "tasks": [
         {
-          "timeSlot": "Morning",
+          "id": "task_1_1",
           "subjectId": "os",
-          "subjectName": "Operating Systems",
-          "topic": "Process Synchronization & Semaphores",
-          "durationMinutes": 30,
-          "taskType": "review"
-        },
-        {
-          "timeSlot": "Evening",
-          "subjectId": "os",
-          "subjectName": "Operating Systems",
-          "topic": "Practice 10 Deadlock MCQs",
-          "durationMinutes": 20,
-          "taskType": "practice"
+          "title": "Master Process Synchronization & Semaphores",
+          "targetMinutes": 45,
+          "isCompleted": false
         }
       ]
     }
@@ -539,46 +640,28 @@ Return ONLY a valid JSON object matching this exact schema:
       final response = await _jsonModel!.generateContent([
         Content.text(prompt),
       ]);
-      final rawText = (response.text ?? '{}')
+      final cleanText = (response.text ?? '{}')
           .replaceAll('```json', '')
           .replaceAll('```', '')
           .trim();
-      final decoded = jsonDecode(rawText) as Map<String, dynamic>;
-
-      final rawDays = decoded['days'] as List<dynamic>? ?? [];
-      final days = rawDays
-          .map((d) => StudyPlanDay.fromJson(d as Map<String, dynamic>))
-          .toList();
-
-      return StudyPlan(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        userId: userId,
-        targetExam: targetExam,
-        dailyGoalMinutes: dailyGoalMinutes,
-        overview: decoded['overview'] as String? ?? 'Personalized 7-Day Plan',
-        days: days,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
+      final decoded = jsonDecode(cleanText) as Map<String, dynamic>;
+      return StudyPlan.fromJson(
+        decoded,
+        'plan_${DateTime.now().millisecondsSinceEpoch}',
       );
     } catch (e) {
-      throw Exception('Failed to generate AI study plan: $e');
+      throw Exception('Failed to generate AI Study Plan: $e');
     }
   }
 
   @override
   Future<String> simplifyExplanation(String previousAnswer) async {
+    _checkAiEnabled();
     _ensureModelsInitialized();
     final prompt =
-        '''
-The user asked to explain the following concept much simpler with plain language, real-world analogies, and zero unnecessary jargon:
-
-Previous Explanation:
-$previousAnswer
-
-Provide a super clear, beginner-friendly simplified explanation:
-''';
-    final response = await _chatModel!.generateContent([Content.text(prompt)]);
-    return response.text ?? 'Could not simplify the explanation.';
+        'Explain this concept in much simpler, intuitive terms using a basic real-world analogy suitable for a beginner student:\n\n$previousAnswer';
+    final res = await _chatModel!.generateContent([Content.text(prompt)]);
+    return res.text ?? previousAnswer;
   }
 
   @override
@@ -586,12 +669,12 @@ Provide a super clear, beginner-friendly simplified explanation:
     String contextText, {
     bool realWorld = false,
   }) async {
+    _checkAiEnabled();
     _ensureModelsInitialized();
     final prompt = realWorld
-        ? 'Provide a vivid, relatable real-world analogy and application for this concept:\n\n$contextText'
-        : 'Provide a concrete, practical code or mathematical example demonstrating this concept:\n\n$contextText';
-
-    final response = await _chatModel!.generateContent([Content.text(prompt)]);
-    return response.text ?? 'Could not generate example.';
+        ? 'Give a clear real-world industry example illustrating this concept:\n\n$contextText'
+        : 'Give a concise code or numerical step-by-step example for this concept:\n\n$contextText';
+    final res = await _chatModel!.generateContent([Content.text(prompt)]);
+    return res.text ?? contextText;
   }
 }

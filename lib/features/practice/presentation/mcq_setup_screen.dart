@@ -17,21 +17,45 @@ import '../../auth/data/auth_repository.dart';
 final currentQuizProvider = StateProvider<QuizSession?>((ref) => null);
 
 class McqSetupScreen extends ConsumerStatefulWidget {
-  const McqSetupScreen({super.key});
+  final String? initialSubjectId;
+  final String? initialTopic;
+  final int? initialCount;
+  final bool? isMock;
+
+  const McqSetupScreen({
+    super.key,
+    this.initialSubjectId,
+    this.initialTopic,
+    this.initialCount,
+    this.isMock,
+  });
 
   @override
   ConsumerState<McqSetupScreen> createState() => _McqSetupScreenState();
 }
 
 class _McqSetupScreenState extends ConsumerState<McqSetupScreen> {
-  String _selectedSubject = AppSubjects.availableSubjects.first.id;
-  final _topicController = TextEditingController(
-    text: 'Process Scheduling & Synchronization',
-  );
+  late String _selectedSubject;
+  late final TextEditingController _topicController;
   String _difficulty = 'Medium';
-  int _count = 5;
+  late int _count;
   bool _isGenerating = false;
-  bool _isMockTest = false;
+  late bool _isMockTest;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedSubject =
+        (widget.initialSubjectId != null &&
+            AppSubjects.getById(widget.initialSubjectId!) != null)
+        ? widget.initialSubjectId!
+        : AppSubjects.availableSubjects.first.id;
+    _topicController = TextEditingController(
+      text: widget.initialTopic ?? 'Process Scheduling & Synchronization',
+    );
+    _count = widget.initialCount ?? 5;
+    _isMockTest = widget.isMock ?? false;
+  }
 
   @override
   void dispose() {

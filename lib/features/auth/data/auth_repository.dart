@@ -1,11 +1,13 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../profile/data/user_repository.dart';
+import '../../../core/services/notification_service.dart';
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   return AuthRepository(
     FirebaseAuth.instance,
     ref.watch(userRepositoryProvider),
+    ref.watch(notificationServiceProvider),
   );
 });
 
@@ -16,18 +18,26 @@ final authStateProvider = StreamProvider<User?>((ref) {
 class AuthRepository {
   final FirebaseAuth _firebaseAuth;
   final UserRepository _userRepository;
+  final NotificationService? _notificationService;
 
-  AuthRepository(this._firebaseAuth, this._userRepository);
+  AuthRepository(
+    this._firebaseAuth,
+    this._userRepository, [
+    this._notificationService,
+  ]);
 
   Stream<User?> authStateChanges() => _firebaseAuth.authStateChanges();
   User? get currentUser => _firebaseAuth.currentUser;
 
   Future<void> signIn(String email, String password) async {
     try {
-      await _firebaseAuth.signInWithEmailAndPassword(
+      final credential = await _firebaseAuth.signInWithEmailAndPassword(
         email: email.trim(),
         password: password,
       );
+      if (credential.user != null) {
+        await _notificationService?.syncUserToken(credential.user!.uid);
+      }
     } on FirebaseAuthException catch (e) {
       throw getFriendlyAuthErrorMessage(e);
     } catch (e) {
@@ -45,6 +55,7 @@ class AuthRepository {
       if (credential.user != null) {
         // Create user profile in Firestore
         await _userRepository.createUserProfile(credential.user!);
+        await _notificationService?.syncUserToken(credential.user!.uid);
         // Send email verification if possible
         try {
           await credential.user!.sendEmailVerification();
@@ -114,6 +125,10 @@ class AuthRepository {
   }
 
   Future<void> signOut() async {
+    final uid = _firebaseAuth.currentUser?.uid;
+    if (uid != null) {
+      await _notificationService?.clearUserToken(uid);
+    }
     await _firebaseAuth.signOut();
   }
 

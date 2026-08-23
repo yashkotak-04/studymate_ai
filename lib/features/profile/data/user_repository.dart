@@ -2,7 +2,6 @@ import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
-import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import '../../../shared/models/user_profile.dart';
 import '../../auth/data/auth_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

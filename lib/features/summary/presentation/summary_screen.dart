@@ -9,7 +9,6 @@ import '../../../core/services/ai_service.dart';
 import '../../../core/services/firebase_service.dart';
 import '../../../shared/widgets/custom_button.dart';
 import '../../../shared/widgets/custom_card.dart';
-import '../../../shared/widgets/custom_chip.dart';
 import '../../../shared/widgets/screen_header.dart';
 import '../../../app/theme/app_colors.dart';
 import '../../../app/theme/text_styles.dart';
@@ -51,7 +50,7 @@ class _SummaryScreenState extends ConsumerState<SummaryScreen> {
         allowedExtensions: ['pdf', 'txt'],
       );
 
-      if (files == null || files.isEmpty) return;
+      if (files.isEmpty) return;
 
       final file = files.first;
       final maxMb = ref.read(firebaseServiceProvider).maxPdfSizeMb;

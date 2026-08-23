@@ -12,6 +12,7 @@ import '../../../app/theme/app_colors.dart';
 import '../../../app/theme/text_styles.dart';
 import '../../auth/data/auth_repository.dart';
 import '../data/user_repository.dart';
+import '../../../core/services/notification_service.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -650,10 +651,198 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
+  void _showStudyReminderModal(BuildContext context, WidgetRef ref) {
+    final reminderSettings = ref.read(reminderSettingsProvider);
+    bool enabled = reminderSettings.isEnabled;
+    TimeOfDay selectedTime = TimeOfDay(
+      hour: reminderSettings.hour,
+      minute: reminderSettings.minute,
+    );
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) {
+          final period = selectedTime.period == DayPeriod.am ? 'AM' : 'PM';
+          final displayHour = selectedTime.hourOfPeriod == 0
+              ? 12
+              : selectedTime.hourOfPeriod;
+          final displayMinute = selectedTime.minute.toString().padLeft(2, '0');
+          final timeStr = '$displayHour:$displayMinute $period';
+
+          return Container(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+            decoration: BoxDecoration(
+              color: Theme.of(context).scaffoldBackgroundColor,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(24),
+              ),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(
+                  child: Container(
+                    width: 38,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? AppColors.darkBorder
+                          : AppColors.lightBorder,
+                      borderRadius: BorderRadius.circular(99),
+                    ),
+                  ),
+                ),
+                Row(
+                  children: [
+                    const Icon(
+                      LucideIcons.bellRing,
+                      color: AppColors.accentAmber,
+                      size: 22,
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      'Daily Study Reminders',
+                      style: AppTextStyles.displayBold(context, fontSize: 18),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Set a recurring daily notification to keep your study streak active.',
+                  style: AppTextStyles.bodySecondary(context, fontSize: 13),
+                ),
+                const SizedBox(height: 16),
+                CustomCard(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 8,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Enable Daily Reminders',
+                        style: AppTextStyles.body(
+                          context,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      Switch(
+                        value: enabled,
+                        activeThumbColor: AppColors.primary,
+                        onChanged: (val) => setModalState(() => enabled = val),
+                      ),
+                    ],
+                  ),
+                ),
+                if (enabled) ...[
+                  const SizedBox(height: 12),
+                  InkWell(
+                    onTap: () async {
+                      final picked = await showTimePicker(
+                        context: context,
+                        initialTime: selectedTime,
+                      );
+                      if (picked != null) {
+                        setModalState(() => selectedTime = picked);
+                      }
+                    },
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 14,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? AppColors.darkSurface
+                            : AppColors.lightSurface,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isDark
+                              ? AppColors.darkBorder
+                              : AppColors.lightBorder,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(
+                                LucideIcons.clock,
+                                size: 20,
+                                color: AppColors.primary,
+                              ),
+                              const SizedBox(width: 10),
+                              Text(
+                                'Reminder Time',
+                                style: AppTextStyles.body(
+                                  context,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                          Text(
+                            timeStr,
+                            style: AppTextStyles.monoBold(
+                              context,
+                              fontSize: 15,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 20),
+                CustomButton(
+                  text: 'Save Reminder',
+                  onPressed: () async {
+                    final success = await ref
+                        .read(reminderSettingsProvider.notifier)
+                        .updateReminder(
+                          isEnabled: enabled,
+                          hour: selectedTime.hour,
+                          minute: selectedTime.minute,
+                        );
+                    if (context.mounted) {
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            success
+                                ? (enabled
+                                      ? 'Daily reminder set for $timeStr'
+                                      : 'Daily reminder disabled')
+                                : 'Notification permission was not granted.',
+                          ),
+                        ),
+                      );
+                    }
+                  },
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(themeModeProvider);
     final userProfileAsync = ref.watch(currentUserProfileProvider);
+    final reminderSettings = ref.watch(reminderSettingsProvider);
     final user = ref.watch(authStateProvider).value;
 
     return Scaffold(
@@ -915,22 +1104,16 @@ class ProfileScreen extends ConsumerWidget {
                         ),
                       ),
                       subtitle: Text(
-                        'Receive reminders to keep your daily streak active',
+                        reminderSettings.isEnabled
+                            ? 'Enabled • ${reminderSettings.formattedTime}'
+                            : 'Disabled',
                         style: AppTextStyles.bodySecondary(
                           context,
                           fontSize: 12,
                         ),
                       ),
                       trailing: const Icon(LucideIcons.chevronRight, size: 18),
-                      onTap: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              'Study reminders are active for your registered device.',
-                            ),
-                          ),
-                        );
-                      },
+                      onTap: () => _showStudyReminderModal(context, ref),
                     ),
                   ],
                 ),
