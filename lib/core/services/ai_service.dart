@@ -171,10 +171,11 @@ class FirebaseAiService implements AiService {
 
     _ensureModelsInitialized();
 
-    final systemInstruction = StringBuffer();
-    systemInstruction.writeln('Subject Focus: ${subjectContext ?? "General"}');
-    systemInstruction.writeln('Explanation Mode: ${mode.label}');
-    systemInstruction.writeln('Mode Directive: ${mode.systemPrompt}');
+    final modeInstruction =
+        'You are StudyMate AI, an expert academic tutor for engineering, diploma, and exam students.\n'
+        'Subject Focus: ${subjectContext ?? "General"}\n'
+        'Explanation Mode: ${mode.label}\n'
+        'Mode Directive: ${mode.systemPrompt}';
 
     // Limit context history to Remote Config limit
     final maxHistory = _firebaseService.maxChatContextMessages;
@@ -190,13 +191,13 @@ class FirebaseAiService implements AiService {
       }
     }).toList();
 
-    final chat = _chatModel!.startChat(history: contentHistory);
-
-    final stream = chat.sendMessageStream(
-      Content.text(
-        '${systemInstruction.toString()}\n\nStudent Question: $prompt',
-      ),
+    final modeModel = FirebaseAI.googleAI().generativeModel(
+      model: _cachedModelName,
+      systemInstruction: Content.system(modeInstruction),
     );
+
+    final chat = modeModel.startChat(history: contentHistory);
+    final stream = chat.sendMessageStream(Content.text(prompt));
 
     await for (final response in stream) {
       yield response.text ?? '';
@@ -348,8 +349,8 @@ Return ONLY a valid JSON array of objects.
       final rawText = response.text ?? '[]';
       final questions = _parseQuestionsJson(rawText, requestedCount);
 
-      if (questions.length == requestedCount) {
-        return questions;
+      if (questions.length >= requestedCount) {
+        return questions.sublist(0, requestedCount);
       }
     } catch (_) {}
 
@@ -363,9 +364,7 @@ Return ONLY a valid JSON array of objects.
       final rawRetry = retryResponse.text ?? '[]';
       final retryQuestions = _parseQuestionsJson(rawRetry, requestedCount);
 
-      if (retryQuestions.length == requestedCount) {
-        return retryQuestions;
-      } else if (retryQuestions.length > requestedCount) {
+      if (retryQuestions.length >= requestedCount) {
         return retryQuestions.sublist(0, requestedCount);
       }
     } catch (e) {

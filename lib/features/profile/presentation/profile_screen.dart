@@ -907,7 +907,9 @@ class ProfileScreen extends ConsumerWidget {
                                   vertical: 2,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: AppColors.primary.withValues(alpha: 0.15),
+                                  color: AppColors.primary.withValues(
+                                    alpha: 0.15,
+                                  ),
                                   borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: Text(
@@ -946,7 +948,7 @@ class ProfileScreen extends ConsumerWidget {
               userProfileAsync.when(
                 data: (profile) {
                   final enrolled =
-                      profile?.enrolledSubjectIds ?? ['os', 'py', 'db', 'net'];
+                      profile?.enrolledSubjectIds ?? const <String>[];
                   return CustomCard(
                     padding: EdgeInsets.zero,
                     child: Column(

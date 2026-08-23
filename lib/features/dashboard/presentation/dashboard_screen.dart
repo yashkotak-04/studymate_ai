@@ -348,7 +348,9 @@ class DashboardScreen extends ConsumerWidget {
                                   child: Container(
                                     decoration: BoxDecoration(
                                       borderRadius: BorderRadius.circular(3),
-                                      color: subject.color.withValues(alpha: 0.5),
+                                      color: subject.color.withValues(
+                                        alpha: 0.5,
+                                      ),
                                     ),
                                   ),
                                 ),

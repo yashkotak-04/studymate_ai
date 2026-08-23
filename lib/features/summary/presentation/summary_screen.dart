@@ -227,7 +227,8 @@ class _SummaryScreenState extends ConsumerState<SummaryScreen> {
 
     final userProfile = ref.read(currentUserProfileProvider).value;
     final enrolled =
-        userProfile?.enrolledSubjectIds ?? ['os', 'py', 'db', 'net'];
+        userProfile?.enrolledSubjectIds ??
+        AppSubjects.availableSubjects.map((s) => s.id).toList();
 
     String selectedSubjectId = enrolled.isNotEmpty ? enrolled.first : 'general';
     String selectedDifficulty = 'Medium';

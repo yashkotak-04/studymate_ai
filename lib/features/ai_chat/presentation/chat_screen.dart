@@ -29,11 +29,7 @@ class ChatScreen extends ConsumerStatefulWidget {
   final String? initialPrompt;
   final String? initialSubjectId;
 
-  const ChatScreen({
-    super.key,
-    this.initialPrompt,
-    this.initialSubjectId,
-  });
+  const ChatScreen({super.key, this.initialPrompt, this.initialSubjectId});
 
   @override
   ConsumerState<ChatScreen> createState() => _ChatScreenState();

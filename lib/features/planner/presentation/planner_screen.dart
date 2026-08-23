@@ -212,7 +212,9 @@ class _PlannerScreenState extends ConsumerState<PlannerScreen> {
                                   ),
                                   decoration: BoxDecoration(
                                     color: isDark
-                                        ? AppColors.primary.withValues(alpha: 0.2)
+                                        ? AppColors.primary.withValues(
+                                            alpha: 0.2,
+                                          )
                                         : AppColors.primaryLight,
                                     borderRadius: BorderRadius.circular(10),
                                   ),
