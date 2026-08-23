@@ -1,0 +1,64 @@
+name: studymate_ai
+description: "StudyMate AI - Next-Gen AI Study & Exam Preparation Platform"
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.12.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+  flutter_riverpod: ^2.5.1
+  riverpod_annotation: ^2.3.5
+  go_router: ^14.0.0
+  fl_chart: ^0.68.0
+  firebase_core: ^4.13.0
+  firebase_auth: ^6.5.7
+  cloud_firestore: ^6.1.3
+  firebase_storage: ^13.4.6
+  firebase_app_check: ^0.4.6
+  firebase_analytics: ^12.4.6
+  firebase_crashlytics: ^5.2.7
+  firebase_remote_config: ^6.5.6
+  firebase_messaging: ^16.5.0
+  speech_to_text: ^7.4.0
+  file_picker: ^12.0.0
+  flutter_native_splash: ^2.4.8
+  shared_preferences: ^2.5.5
+  uuid: ^4.6.0
+  intl: ^0.20.3
+  google_fonts: ^8.2.1
+  lucide_icons_flutter: ^3.1.17
+  firebase_ai: ^3.15.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  build_runner: ^2.4.9
+  riverpod_generator: ^2.4.0
+  flutter_lints: ^6.0.0
+  mocktail: ^1.0.5
+  flutter_launcher_icons: ^0.14.4
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/app_icon.jpg"
+  min_sdk_android: 21
+
+flutter_native_splash:
+  color: "#0F172A"
+  image: "assets/images/app_icon.jpg"
+  android_12:
+    image: "assets/images/app_icon.jpg"
+    color: "#0F172A"

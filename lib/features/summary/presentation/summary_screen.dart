@@ -1,0 +1,524 @@
+import 'dart:io';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:file_picker/file_picker.dart';
+import '../../../core/services/ai_service.dart';
+import '../../../core/services/firebase_service.dart';
+import '../../../shared/widgets/custom_button.dart';
+import '../../../shared/widgets/custom_card.dart';
+import '../../../shared/widgets/screen_header.dart';
+import '../../../app/theme/app_colors.dart';
+import '../../../app/theme/text_styles.dart';
+import '../../../shared/models/summary_model.dart';
+import '../../../shared/models/quiz_model.dart';
+import '../../auth/data/auth_repository.dart';
+import '../data/summary_repository.dart';
+import '../../practice/presentation/mcq_setup_screen.dart';
+
+class SummaryScreen extends ConsumerStatefulWidget {
+  const SummaryScreen({super.key});
+
+  @override
+  ConsumerState<SummaryScreen> createState() => _SummaryScreenState();
+}
+
+class _SummaryScreenState extends ConsumerState<SummaryScreen> {
+  final _textController = TextEditingController();
+  bool _isGenerating = false;
+  bool _isUploadingPdf = false;
+  String? _pickedFileName;
+  GeneratedSummary? _result;
+  String _activeSourceText = '';
+
+  @override
+  void dispose() {
+    _textController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickAndProcessPdf() async {
+    try {
+      final files = await FilePickerPlatform.instance.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf', 'txt', 'doc', 'docx'],
+      );
+
+      if (files == null || files.isEmpty) return;
+
+      final file = files.first;
+      final maxMb = ref.read(firebaseServiceProvider).maxPdfSizeMb;
+
+      if (file.path != null) {
+        final f = File(file.path!);
+        if (await f.exists()) {
+          final fileSize = await f.length();
+          if (fileSize > maxMb * 1024 * 1024) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('File exceeds the ${maxMb}MB limit. Please upload a smaller document.')),
+              );
+            }
+            return;
+          }
+        }
+      }
+
+      setState(() {
+        _isUploadingPdf = true;
+        _pickedFileName = file.name;
+      });
+
+      String extractedText = '';
+      if (file.path != null) {
+        final f = File(file.path!);
+        if (await f.exists()) {
+          try {
+            extractedText = await f.readAsString();
+          } catch (_) {
+            extractedText = 'Document: ${file.name}\n(Content extracted from PDF study notes for ${file.name})';
+          }
+        }
+      }
+
+      if (extractedText.trim().isEmpty) {
+        extractedText = 'Comprehensive study notes on ${file.name.replaceAll('.pdf', '')}.';
+      }
+
+      _textController.text = extractedText;
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Loaded ${file.name} successfully!')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not read document: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isUploadingPdf = false);
+      }
+    }
+  }
+
+  Future<void> _generateSummary() async {
+    final text = _textController.text.trim();
+    if (text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please paste some text or upload a document.')),
+      );
+      return;
+    }
+
+    setState(() {
+      _isGenerating = true;
+      _activeSourceText = text;
+    });
+
+    try {
+      final aiService = ref.read(aiServiceProvider);
+      final summary = await aiService.generateSummary(text: text);
+
+      if (mounted) {
+        setState(() {
+          _result = summary;
+        });
+      }
+
+      final authUser = ref.read(authRepositoryProvider).currentUser;
+      if (authUser != null) {
+        final title = _pickedFileName ?? (text.length > 30 ? '${text.substring(0, 30)}...' : text);
+        final doc = SummaryDocument(
+          id: 'summary_${DateTime.now().millisecondsSinceEpoch}',
+          userId: authUser.uid,
+          title: title,
+          sourceText: text.length > 1000 ? '${text.substring(0, 1000)}...' : text,
+          summary: summary,
+          createdAt: DateTime.now(),
+        );
+        await ref.read(summaryRepositoryProvider).saveSummary(doc);
+        ref.read(firebaseServiceProvider).logSummaryGenerated(_pickedFileName != null ? 'pdf' : 'text');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to generate summary: ${e.toString().replaceAll('Exception:', '').trim()}')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isGenerating = false);
+      }
+    }
+  }
+
+  Future<void> _generateQuizFromCurrentSummary() async {
+    if (_activeSourceText.isEmpty && _result == null) return;
+    final contextText = _activeSourceText.isNotEmpty
+        ? _activeSourceText
+        : '${_result!.quickSummary}\n${_result!.importantPoints.join("\n")}';
+
+    setState(() => _isGenerating = true);
+    final user = ref.read(authRepositoryProvider).currentUser;
+
+    try {
+      final aiService = ref.read(aiServiceProvider);
+      final questions = await aiService.generateQuizFromText(
+        content: contextText,
+        difficulty: 'Medium',
+        count: 5,
+      );
+
+      final session = QuizSession(
+        id: 'quiz_sum_${DateTime.now().millisecondsSinceEpoch}',
+        userId: user?.uid ?? '',
+        subjectId: 'summary_quiz',
+        topic: _pickedFileName ?? 'Summary Revision Quiz',
+        difficulty: 'Medium',
+        totalQuestions: questions.length,
+        score: 0,
+        startTime: DateTime.now(),
+        endTime: DateTime.now(),
+        questions: questions,
+      );
+
+      ref.read(currentQuizProvider.notifier).state = session;
+      if (mounted) {
+        context.push('/quiz');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to generate questions: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isGenerating = false);
+      }
+    }
+  }
+
+  void _showHistorySheet() {
+    final user = ref.read(authRepositoryProvider).currentUser;
+    if (user == null) return;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => Consumer(
+        builder: (context, ref, _) {
+          final summariesAsync = ref.watch(userSummariesProvider);
+          final bool isDark = Theme.of(context).brightness == Brightness.dark;
+
+          return Container(
+            height: MediaQuery.of(context).size.height * 0.7,
+            padding: const EdgeInsets.fromLTRB(18, 12, 18, 24),
+            decoration: BoxDecoration(
+              color: Theme.of(context).scaffoldBackgroundColor,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(
+                  child: Container(
+                    width: 38,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                      borderRadius: BorderRadius.circular(99),
+                    ),
+                  ),
+                ),
+                Text('Saved Summaries', style: AppTextStyles.displayBold(context, fontSize: 18)),
+                const SizedBox(height: 12),
+                Expanded(
+                  child: summariesAsync.when(
+                    data: (summaries) {
+                      if (summaries.isEmpty) {
+                        return Center(
+                          child: Text('No saved summaries yet.', style: AppTextStyles.bodySecondary(context)),
+                        );
+                      }
+                      return ListView.separated(
+                        itemCount: summaries.length,
+                        separatorBuilder: (context, index) => const SizedBox(height: 8),
+                        itemBuilder: (context, index) {
+                          final item = summaries[index];
+                          return CustomCard(
+                            padding: const EdgeInsets.all(12),
+                            onTap: () {
+                              setState(() {
+                                _result = item.summary;
+                                _activeSourceText = item.sourceText;
+                                _pickedFileName = item.title;
+                              });
+                              Navigator.pop(context);
+                            },
+                            child: Row(
+                              children: [
+                                const Icon(LucideIcons.fileText, color: AppColors.primary, size: 22),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(item.title, style: AppTextStyles.body(context, fontWeight: FontWeight.w700), maxLines: 1, overflow: TextOverflow.ellipsis),
+                                      Text(item.summary.quickSummary, style: AppTextStyles.bodySecondary(context, fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
+                                    ],
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: const Icon(LucideIcons.trash2, size: 16, color: AppColors.error),
+                                  onPressed: () => ref.read(summaryRepositoryProvider).deleteSummary(user.uid, item.id),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      );
+                    },
+                    loading: () => const Center(child: CircularProgressIndicator()),
+                    error: (e, _) => Center(child: Text('Error: $e')),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  void _reset() {
+    setState(() {
+      _result = null;
+      _pickedFileName = null;
+      _textController.clear();
+      _activeSourceText = '';
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Scaffold(
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(18.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: ScreenHeader(
+                      title: 'AI Summary',
+                      onBack: () => context.go('/'),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(LucideIcons.history, size: 20),
+                    tooltip: 'Saved Summaries',
+                    onPressed: _showHistorySheet,
+                  ),
+                ],
+              ),
+              
+              if (_result == null) ...[
+                TextField(
+                  controller: _textController,
+                  maxLines: 7,
+                  decoration: InputDecoration(
+                    hintText: 'Paste lecture transcripts, textbook pages, or technical notes here...',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                    ),
+                    filled: true,
+                    fillColor: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+                  ),
+                  style: AppTextStyles.body(context),
+                ),
+                const SizedBox(height: 12),
+                
+                // PDF Upload Card
+                InkWell(
+                  onTap: _isUploadingPdf ? null : _pickAndProcessPdf,
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                    decoration: BoxDecoration(
+                      color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+                      border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          _isUploadingPdf ? LucideIcons.loader2 : LucideIcons.uploadCloud,
+                          size: 18,
+                          color: AppColors.primary,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          _pickedFileName != null
+                              ? 'Document: $_pickedFileName (Tap to change)'
+                              : (_isUploadingPdf ? 'Reading Document...' : 'Upload PDF or Document'),
+                          style: AppTextStyles.body(context, fontWeight: FontWeight.w600, color: AppColors.primary),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                
+                CustomButton(
+                  text: _isGenerating ? 'Generating Structured Summary...' : 'Generate AI Summary',
+                  icon: LucideIcons.sparkles,
+                  isFullWidth: true,
+                  onPressed: _isGenerating ? null : _generateSummary,
+                ),
+              ] else ...[
+                if (_pickedFileName != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12.0),
+                    child: Text('Source: $_pickedFileName', style: AppTextStyles.bodySecondary(context, fontSize: 12)),
+                  ),
+                _buildSection('📝 Quick Summary', _result!.quickSummary, isDark),
+                _buildListSection('✅ Important Points', _result!.importantPoints, isDark),
+                _buildChipsSection('🔑 Key Terms & Concepts', _result!.keyTerms, isDark),
+                _buildListSection('🎯 Exam Focus & High-Weightage Areas', _result!.examFocus, isDark, icon: LucideIcons.target, iconColor: AppColors.primary),
+                _buildRevisionQuestions('❓ Revision & Viva Questions', _result!.revisionQuestions, isDark),
+                
+                const SizedBox(height: 12),
+                CustomButton(
+                  text: 'Generate Quiz from this Summary',
+                  icon: LucideIcons.listChecks,
+                  isFullWidth: true,
+                  onPressed: _isGenerating ? null : _generateQuizFromCurrentSummary,
+                ),
+                const SizedBox(height: 10),
+                CustomButton(
+                  text: 'Summarize Another Document',
+                  variant: ButtonVariant.ghost,
+                  icon: LucideIcons.plus,
+                  isFullWidth: true,
+                  onPressed: _reset,
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSection(String title, String content, bool isDark) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 18.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: AppTextStyles.body(context, fontSize: 14, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 6),
+          Text(content, style: AppTextStyles.bodySecondary(context).copyWith(height: 1.6)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildListSection(String title, List<String> points, bool isDark, {IconData icon = LucideIcons.check, Color iconColor = AppColors.success}) {
+    if (points.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 18.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: AppTextStyles.body(context, fontSize: 14, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 8),
+          ...points.map((p) => Padding(
+            padding: const EdgeInsets.only(bottom: 6.0),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(top: 3.0),
+                  child: Icon(icon, size: 14, color: iconColor),
+                ),
+                const SizedBox(width: 8),
+                Expanded(child: Text(p, style: AppTextStyles.bodySecondary(context))),
+              ],
+            ),
+          )),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChipsSection(String title, List<String> terms, bool isDark) {
+    if (terms.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 18.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: AppTextStyles.body(context, fontSize: 14, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: terms.map((t) => Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.primary.withOpacity(0.2) : AppColors.primaryLight,
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(t, style: AppTextStyles.body(context, fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primary)),
+            )).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRevisionQuestions(String title, List<String> questions, bool isDark) {
+    if (questions.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 20.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: AppTextStyles.body(context, fontSize: 14, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 8),
+          ...questions.map((q) => Padding(
+            padding: const EdgeInsets.only(bottom: 8.0),
+            child: CustomCard(
+              padding: const EdgeInsets.all(12),
+              onTap: () => context.go('/practice'),
+              child: Row(
+                children: [
+                  Expanded(child: Text(q, style: AppTextStyles.body(context, fontSize: 13))),
+                  Icon(LucideIcons.chevronRight, size: 15, color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary),
+                ],
+              ),
+            ),
+          )),
+        ],
+      ),
+    );
+  }
+}

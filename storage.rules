@@ -1,0 +1,29 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Require authentication
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Limit to exactly 5MB
+    function isValidSize() {
+      return request.resource.size <= 5 * 1024 * 1024;
+    }
+    
+    // Only allow specific content types (e.g., PDF)
+    function isPdf() {
+      return request.resource.contentType.matches('application/pdf');
+    }
+
+    match /users/{userId}/{allPaths=**} {
+      allow read, write: if isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    match /uploads/{userId}/{document=**} {
+      allow read: if isAuthenticated() && request.auth.uid == userId;
+      allow write: if isAuthenticated() && request.auth.uid == userId && isValidSize() && isPdf();
+    }
+  }
+}
