@@ -114,11 +114,11 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen> {
     // Find Strongest and Weakest Subjects for selected period
     String strongestSubjectName = 'N/A';
     String weakestSubjectName = 'N/A';
+    double highestAcc = -1.0;
+    double lowestAcc = 101.0;
 
     if (_selectedFilter == TimeFilter.allTime) {
       final subjectProgressList = subjectProgressAsync.value ?? [];
-      double highestAcc = -1.0;
-      double lowestAcc = 101.0;
       for (final sp in subjectProgressList) {
         final acc = (sp['accuracy'] as num?)?.toDouble() ?? 0.0;
         final subId = sp['id'] as String? ?? '';
@@ -134,6 +134,7 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen> {
           }
         }
       }
+    } else {
       final Map<String, int> subCorrect = {};
       final Map<String, int> subTotal = {};
       for (final q in filteredQuizzes) {
@@ -149,8 +150,6 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen> {
         }
       }
 
-      double highestAcc = -1.0;
-      double lowestAcc = 101.0;
       for (final entry in subTotal.entries) {
         final totalQ = entry.value;
         if (totalQ > 0) {
@@ -638,8 +637,9 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen> {
                                 getTitlesWidget:
                                     (double value, TitleMeta meta) {
                                       if (value.toInt() >= subjects.length ||
-                                          value.toInt() < 0)
+                                          value.toInt() < 0) {
                                         return const SizedBox();
+                                      }
                                       final subjectId =
                                           subjects[value.toInt()]['id']
                                               as String;

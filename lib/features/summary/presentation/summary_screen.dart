@@ -15,7 +15,9 @@ import '../../../app/theme/app_colors.dart';
 import '../../../app/theme/text_styles.dart';
 import '../../../shared/models/summary_model.dart';
 import '../../../shared/models/quiz_model.dart';
+import '../../../shared/models/subject.dart';
 import '../../auth/data/auth_repository.dart';
+import '../../profile/data/user_repository.dart';
 import '../data/summary_repository.dart';
 import '../../practice/presentation/mcq_setup_screen.dart';
 
@@ -279,8 +281,9 @@ class _SummaryScreenState extends ConsumerState<SummaryScreen> {
                     label: const Text('General Document Practice'),
                     selected: selectedSubjectId == 'general',
                     onSelected: (val) {
-                      if (val)
+                      if (val) {
                         setModalState(() => selectedSubjectId = 'general');
+                      }
                     },
                   ),
                 ],
@@ -305,8 +308,9 @@ class _SummaryScreenState extends ConsumerState<SummaryScreen> {
                         label: Center(child: Text(diff)),
                         selected: isSelected,
                         onSelected: (val) {
-                          if (val)
+                          if (val) {
                             setModalState(() => selectedDifficulty = diff);
+                          }
                         },
                       ),
                     ),
@@ -406,7 +410,6 @@ class _SummaryScreenState extends ConsumerState<SummaryScreen> {
       );
 
       ref.read(currentQuizProvider.notifier).state = session;
-      ref.read(activeQuizQuestionsProvider.notifier).state = questions;
       if (mounted) {
         context.push('/quiz');
       }

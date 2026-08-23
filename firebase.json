@@ -1,9 +1,1 @@
-{
-  "firestore": {
-    "rules": "firestore.rules",
-    "indexes": "firestore.indexes.json"
-  },
-  "storage": {
-    "rules": "storage.rules"
-  }
-}
+{"firestore":{"rules":"firestore.rules","indexes":"firestore.indexes.json"},"storage":{"rules":"storage.rules"},"flutter":{"platforms":{"android":{"default":{"projectId":"studymate-ai-9e018","appId":"1:770312400067:android:8fa49e2495215277fc0676","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"studymate-ai-9e018","configurations":{"android":"1:770312400067:android:8fa49e2495215277fc0676","ios":"1:770312400067:ios:567c6048f0f57a7dfc0676","web":"1:770312400067:web:79d0c0c9e31cdce5fc0676"}}}}}}

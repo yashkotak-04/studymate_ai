@@ -23,9 +23,7 @@ final recommendationsProvider = Provider<List<Recommendation>>((ref) {
 
   final targetExam = userProfile?.targetExam ?? '';
   final examDate = userProfile?.examDate;
-  final daysRemaining = examDate != null
-      ? examDate.difference(DateTime.now()).inDays
-      : null;
+  final daysRemaining = examDate?.difference(DateTime.now()).inDays;
   final examSuffix = (daysRemaining != null && daysRemaining > 0)
       ? ' with $targetExam in $daysRemaining days'
       : '';

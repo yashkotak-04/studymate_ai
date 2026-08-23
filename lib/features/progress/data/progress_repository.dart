@@ -11,8 +11,9 @@ final progressRepositoryProvider = Provider<ProgressRepository>((ref) {
 
 final dailyStatsProvider = StreamProvider<Map<String, dynamic>>((ref) {
   final user = ref.watch(authStateProvider).value;
-  if (user == null)
+  if (user == null) {
     return Stream.value({'minutesStudied': 0, 'goalMet': false});
+  }
   return ref.watch(progressRepositoryProvider).streamDailyStats(user.uid);
 });
 

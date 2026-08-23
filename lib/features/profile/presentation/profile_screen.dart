@@ -409,13 +409,13 @@ class ProfileScreen extends ConsumerWidget {
                   ),
                   decoration: BoxDecoration(
                     color: Theme.of(context).brightness == Brightness.dark
-                        ? AppColors.surfaceDark
-                        : AppColors.surfaceLight,
+                        ? AppColors.darkSurface
+                        : AppColors.lightSurface,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                       color: Theme.of(context).brightness == Brightness.dark
-                          ? AppColors.cardBorderDark
-                          : AppColors.cardBorderLight,
+                          ? AppColors.darkBorder
+                          : AppColors.lightBorder,
                     ),
                   ),
                   child: Row(
@@ -667,8 +667,9 @@ class ProfileScreen extends ConsumerWidget {
 
               userProfileAsync.when(
                 data: (profile) {
-                  if (profile == null)
+                  if (profile == null) {
                     return const Center(child: Text('Profile not found'));
+                  }
                   return CustomCard(
                     child: Row(
                       children: [
@@ -854,7 +855,7 @@ class ProfileScreen extends ConsumerWidget {
                   );
                 },
                 loading: () => const SizedBox.shrink(),
-                error: (_, __) => const SizedBox.shrink(),
+                error: (e, st) => const SizedBox.shrink(),
               ),
               const SizedBox(height: 20),
 

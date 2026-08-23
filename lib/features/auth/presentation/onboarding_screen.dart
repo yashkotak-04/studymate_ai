@@ -188,13 +188,13 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   ),
                   decoration: BoxDecoration(
                     color: isDark
-                        ? AppColors.surfaceDark
-                        : AppColors.surfaceLight,
+                        ? AppColors.darkSurface
+                        : AppColors.lightSurface,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                       color: isDark
-                          ? AppColors.cardBorderDark
-                          : AppColors.cardBorderLight,
+                          ? AppColors.darkBorder
+                          : AppColors.lightBorder,
                     ),
                   ),
                   child: Row(
