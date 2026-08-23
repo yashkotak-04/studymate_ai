@@ -209,10 +209,9 @@ class RecommendationsScreen extends ConsumerWidget {
                                         ),
                                         child: Text(
                                           rec.isPersonalized ? 'Personalized' : 'Suggestion',
-                                          style: AppTextStyles.mono(
+                                          style: AppTextStyles.monoBold(
                                             context,
                                             fontSize: 10,
-                                            fontWeight: FontWeight.w700,
                                             color: rec.isPersonalized ? AppColors.accentAmber : (isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary),
                                           ),
                                         ),

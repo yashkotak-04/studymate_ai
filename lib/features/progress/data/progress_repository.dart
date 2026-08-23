@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../../shared/models/subject.dart';
+import '../../../shared/models/quiz_model.dart';
 
 final progressRepositoryProvider = Provider<ProgressRepository>((ref) {
   return ProgressRepository(FirebaseFirestore.instance);

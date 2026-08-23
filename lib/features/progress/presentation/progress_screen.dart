@@ -10,6 +10,7 @@ import '../../../shared/models/subject.dart';
 import '../../profile/data/user_repository.dart';
 import '../../practice/data/quiz_repository.dart';
 import '../data/progress_repository.dart';
+import '../../../shared/models/quiz_model.dart';
 
 enum TimeFilter { week, month, allTime }
 
@@ -311,7 +312,7 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen> {
                                 if (idx >= 0 && idx < chronologicalQuizzes.length) {
                                   return Padding(
                                     padding: const EdgeInsets.only(top: 6.0),
-                                    child: Text('Q${idx + 1}', style: AppTextStyles.mono(context, fontSize: 10)),
+                                    child: Text('Q${idx + 1}', style: AppTextStyles.monoBold(context, fontSize: 10)),
                                   );
                                 }
                                 return const SizedBox();
