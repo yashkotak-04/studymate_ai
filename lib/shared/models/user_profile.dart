@@ -35,9 +35,16 @@ class UserProfile {
     this.lastActiveAt,
   });
 
-  factory UserProfile.fromJson(Map<String, dynamic> json, [String? documentId]) {
+  factory UserProfile.fromJson(
+    Map<String, dynamic> json, [
+    String? documentId,
+  ]) {
     return UserProfile(
-      uid: documentId ?? json['uid'] as String? ?? json['userId'] as String? ?? '',
+      uid:
+          documentId ??
+          json['uid'] as String? ??
+          json['userId'] as String? ??
+          '',
       email: json['email'] as String?,
       displayName: json['displayName'] as String?,
       avatarUrl: json['avatarUrl'] as String?,
