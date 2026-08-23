@@ -8,6 +8,7 @@ import 'package:studymate_ai/features/practice/presentation/mcq_setup_screen.dar
 import 'package:studymate_ai/features/practice/presentation/quiz_screen.dart';
 import 'package:studymate_ai/features/recommendations/presentation/recommendations_screen.dart';
 import 'package:studymate_ai/shared/models/quiz_model.dart';
+import 'package:studymate_ai/shared/models/recommendation_model.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
@@ -28,10 +29,10 @@ void main() {
 
         await tester.pumpAndSettle();
 
-        expect(find.text('StudyMate AI'), findsOneWidget);
+        expect(find.text('Welcome back'), findsOneWidget);
         expect(find.byType(TextField), findsNWidgets(2));
         expect(find.text('Sign In'), findsOneWidget);
-        expect(find.text('Create an account'), findsOneWidget);
+        expect(find.text('Sign up'), findsOneWidget);
       },
     );
 
@@ -111,8 +112,40 @@ void main() {
     testWidgets(
       '3. Recommendations Flow: Renders AI diagnostic badges and actionable cards',
       (tester) async {
+        final mockRecs = [
+          Recommendation(
+            id: 'rec_1',
+            userId: 'u1',
+            subjectId: 'general',
+            subjectName: 'AI Tutor',
+            topic: 'Concept Clarification',
+            title: 'Ask AI Tutor Tricky Viva & Exam Questions',
+            reason: 'Stuck on complex definitions?',
+            actionLabel: 'Open AI Tutor',
+            actionType: 'chat',
+            actionRoute: '/chat',
+            isPersonalized: false,
+            createdAt: DateTime.now(),
+          ),
+          Recommendation(
+            id: 'rec_2',
+            userId: 'u1',
+            subjectId: 'summary',
+            subjectName: 'Smart Notes',
+            topic: 'Exam Revision',
+            title: 'Generate Exam-Focus Revision Summaries',
+            reason: 'Upload notes',
+            actionLabel: 'Summarize Document',
+            actionType: 'summary',
+            actionRoute: '/summary',
+            isPersonalized: false,
+            createdAt: DateTime.now(),
+          ),
+        ];
+
         await tester.pumpWidget(
           ProviderScope(
+            overrides: [recommendationsProvider.overrideWithValue(mockRecs)],
             child: MaterialApp(
               theme: AppTheme.lightTheme,
               home: const RecommendationsScreen(),
@@ -123,8 +156,14 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(find.text('AI Recommendations'), findsOneWidget);
-        expect(find.text('Diagnostic Recommendations'), findsOneWidget);
-        expect(find.text('Actionable Study Tips'), findsOneWidget);
+        expect(
+          find.text('Ask AI Tutor Tricky Viva & Exam Questions'),
+          findsOneWidget,
+        );
+        expect(
+          find.text('Generate Exam-Focus Revision Summaries'),
+          findsOneWidget,
+        );
       },
     );
   });
