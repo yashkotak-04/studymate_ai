@@ -134,11 +134,15 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen> {
           }
         }
       }
-    } else {
       final Map<String, int> subCorrect = {};
       final Map<String, int> subTotal = {};
       for (final q in filteredQuizzes) {
-        if (q.subjectId != 'summary_quiz' && q.subjectId.isNotEmpty) {
+        final isAcademicSubject =
+            AppSubjects.getById(q.subjectId) != null &&
+            q.subjectId != 'summary_quiz' &&
+            q.subjectId != 'general' &&
+            q.subjectId != 'doc_practice';
+        if (isAcademicSubject) {
           subCorrect[q.subjectId] = (subCorrect[q.subjectId] ?? 0) + q.score;
           subTotal[q.subjectId] =
               (subTotal[q.subjectId] ?? 0) + q.totalQuestions;

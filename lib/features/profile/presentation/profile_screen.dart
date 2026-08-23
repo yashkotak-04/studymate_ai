@@ -344,6 +344,157 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
+  void _showEditExamModal(
+    BuildContext context,
+    WidgetRef ref,
+    UserProfile? profile,
+  ) {
+    final examController = TextEditingController(
+      text: profile?.targetExam ?? '',
+    );
+    DateTime? selectedDate = profile?.examDate;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) => Padding(
+          padding: EdgeInsets.only(
+            left: 20,
+            right: 20,
+            top: 20,
+            bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'Edit Target Exam & Date',
+                style: AppTextStyles.displayBold(context, fontSize: 18),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: examController,
+                decoration: const InputDecoration(
+                  labelText: 'Target Exam Name',
+                  hintText: 'e.g. MSBTE 6th Sem, Finals',
+                  prefixIcon: Icon(LucideIcons.target, size: 20),
+                ),
+              ),
+              const SizedBox(height: 16),
+              InkWell(
+                onTap: () async {
+                  final now = DateTime.now();
+                  final picked = await showDatePicker(
+                    context: context,
+                    initialDate:
+                        selectedDate ?? now.add(const Duration(days: 30)),
+                    firstDate: now,
+                    lastDate: now.add(const Duration(days: 730)),
+                  );
+                  if (picked != null) {
+                    setModalState(() => selectedDate = picked);
+                  }
+                },
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 14,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? AppColors.surfaceDark
+                        : AppColors.surfaceLight,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? AppColors.cardBorderDark
+                          : AppColors.cardBorderLight,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        LucideIcons.calendar,
+                        size: 20,
+                        color: AppColors.primary,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          selectedDate != null
+                              ? 'Exam Date: ${selectedDate!.day}/${selectedDate!.month}/${selectedDate!.year}'
+                              : 'Select Exam Date (Optional)',
+                          style: selectedDate != null
+                              ? AppTextStyles.body(
+                                  context,
+                                  fontWeight: FontWeight.w600,
+                                )
+                              : AppTextStyles.bodySecondary(context),
+                        ),
+                      ),
+                      if (selectedDate != null)
+                        IconButton(
+                          icon: const Icon(LucideIcons.x, size: 16),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          onPressed: () =>
+                              setModalState(() => selectedDate = null),
+                        )
+                      else
+                        const Icon(LucideIcons.chevronRight, size: 18),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              CustomButton(
+                text: 'Save Exam Settings',
+                onPressed: () async {
+                  final examName = examController.text.trim();
+                  if (examName.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Please enter an exam name.'),
+                      ),
+                    );
+                    return;
+                  }
+                  final uid =
+                      profile?.uid ??
+                      ref.read(authRepositoryProvider).currentUser?.uid;
+                  if (uid != null) {
+                    await ref
+                        .read(userRepositoryProvider)
+                        .updateTargetExam(
+                          uid,
+                          targetExam: examName,
+                          examDate: selectedDate,
+                        );
+                  }
+                  if (context.mounted) {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Target exam updated successfully!'),
+                      ),
+                    );
+                  }
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   void _showChangePasswordDialog(BuildContext context, WidgetRef ref) {
     final passwordController = TextEditingController();
     final confirmController = TextEditingController();
@@ -639,6 +790,36 @@ class ProfileScreen extends ConsumerWidget {
                             ref,
                             List.from(enrolled),
                           ),
+                        ),
+                        const Divider(height: 1),
+                        ListTile(
+                          leading: const Icon(
+                            LucideIcons.target,
+                            size: 20,
+                            color: AppColors.accentAmber,
+                          ),
+                          title: Text(
+                            'Target Exam & Date',
+                            style: AppTextStyles.body(
+                              context,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          subtitle: Text(
+                            profile?.examDate != null
+                                ? '${profile?.targetExam ?? 'Exams'} • ${profile!.examDate!.day}/${profile.examDate!.month}/${profile.examDate!.year}'
+                                : '${profile?.targetExam ?? 'Set Target Exam'} (No date set)',
+                            style: AppTextStyles.bodySecondary(
+                              context,
+                              fontSize: 12,
+                            ),
+                          ),
+                          trailing: const Icon(
+                            LucideIcons.chevronRight,
+                            size: 18,
+                          ),
+                          onTap: () =>
+                              _showEditExamModal(context, ref, profile),
                         ),
                         const Divider(height: 1),
                         ListTile(

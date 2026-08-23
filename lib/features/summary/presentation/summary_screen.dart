@@ -224,6 +224,149 @@ class _SummaryScreenState extends ConsumerState<SummaryScreen> {
     final hasBytes = _pickedFileBytes != null && _pickedFileBytes!.isNotEmpty;
     if (!hasBytes && _activeSourceText.isEmpty && _result == null) return;
 
+    final userProfile = ref.read(currentUserProfileProvider).value;
+    final enrolled =
+        userProfile?.enrolledSubjectIds ?? ['os', 'py', 'db', 'net'];
+
+    String selectedSubjectId = enrolled.isNotEmpty ? enrolled.first : 'general';
+    String selectedDifficulty = 'Medium';
+    int selectedCount = 10;
+    final maxAllowedCount = ref.read(firebaseServiceProvider).maxMcqCount;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) => Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'Generate Practice Quiz from Document',
+                style: AppTextStyles.displayBold(context, fontSize: 18),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Select Associated Subject',
+                style: AppTextStyles.body(
+                  context,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  ...enrolled.map((id) {
+                    final subj = AppSubjects.getById(id);
+                    final isSelected = selectedSubjectId == id;
+                    return ChoiceChip(
+                      label: Text(subj?.name ?? id),
+                      selected: isSelected,
+                      onSelected: (val) {
+                        if (val) setModalState(() => selectedSubjectId = id);
+                      },
+                    );
+                  }),
+                  ChoiceChip(
+                    label: const Text('General Document Practice'),
+                    selected: selectedSubjectId == 'general',
+                    onSelected: (val) {
+                      if (val)
+                        setModalState(() => selectedSubjectId = 'general');
+                    },
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Difficulty Level',
+                style: AppTextStyles.body(
+                  context,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: ['Easy', 'Medium', 'Hard'].map((diff) {
+                  final isSelected = selectedDifficulty == diff;
+                  return Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: ChoiceChip(
+                        label: Center(child: Text(diff)),
+                        selected: isSelected,
+                        onSelected: (val) {
+                          if (val)
+                            setModalState(() => selectedDifficulty = diff);
+                        },
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Questions: $selectedCount',
+                    style: AppTextStyles.body(
+                      context,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Text(
+                    'Max: $maxAllowedCount',
+                    style: AppTextStyles.bodySecondary(context, fontSize: 12),
+                  ),
+                ],
+              ),
+              Slider(
+                value: selectedCount.toDouble().clamp(
+                  3.0,
+                  maxAllowedCount.toDouble(),
+                ),
+                min: 3.0,
+                max: maxAllowedCount.toDouble(),
+                divisions: (maxAllowedCount - 3).clamp(1, 20),
+                label: '$selectedCount questions',
+                onChanged: (val) =>
+                    setModalState(() => selectedCount = val.round()),
+              ),
+              const SizedBox(height: 16),
+              CustomButton(
+                text: 'Generate & Start Quiz',
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  _startConfiguredQuiz(
+                    subjectId: selectedSubjectId,
+                    difficulty: selectedDifficulty,
+                    count: selectedCount,
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _startConfiguredQuiz({
+    required String subjectId,
+    required String difficulty,
+    required int count,
+  }) async {
+    final hasBytes = _pickedFileBytes != null && _pickedFileBytes!.isNotEmpty;
     setState(() => _isGenerating = true);
     final user = ref.read(authRepositoryProvider).currentUser;
 
@@ -235,8 +378,8 @@ class _SummaryScreenState extends ConsumerState<SummaryScreen> {
         questions = await aiService.generateQuizFromDocument(
           documentBytes: _pickedFileBytes,
           mimeType: _pickedFileMimeType ?? 'application/pdf',
-          difficulty: 'Medium',
-          count: 5,
+          difficulty: difficulty,
+          count: count,
         );
       } else {
         final contextText = _activeSourceText.isNotEmpty
@@ -244,17 +387,17 @@ class _SummaryScreenState extends ConsumerState<SummaryScreen> {
             : '${_result!.quickSummary}\n${_result!.importantPoints.join("\n")}';
         questions = await aiService.generateQuizFromText(
           content: contextText,
-          difficulty: 'Medium',
-          count: 5,
+          difficulty: difficulty,
+          count: count,
         );
       }
 
       final session = QuizSession(
         id: 'quiz_sum_${DateTime.now().millisecondsSinceEpoch}',
         userId: user?.uid ?? '',
-        subjectId: 'summary_quiz',
-        topic: _pickedFileName ?? 'Summary Revision Quiz',
-        difficulty: 'Medium',
+        subjectId: subjectId,
+        topic: _pickedFileName ?? 'Document Practice',
+        difficulty: difficulty,
         totalQuestions: questions.length,
         score: 0,
         startTime: DateTime.now(),
@@ -263,13 +406,18 @@ class _SummaryScreenState extends ConsumerState<SummaryScreen> {
       );
 
       ref.read(currentQuizProvider.notifier).state = session;
+      ref.read(activeQuizQuestionsProvider.notifier).state = questions;
       if (mounted) {
         context.push('/quiz');
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to generate questions: $e')),
+          const SnackBar(
+            content: Text(
+              'Could not generate quiz questions right now. Please try again.',
+            ),
+          ),
         );
       }
     } finally {

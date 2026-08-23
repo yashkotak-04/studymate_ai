@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -6,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'firebase_options.dart';
 import 'core/services/firebase_service.dart';
+import 'core/services/notification_service.dart';
 import 'app/router/app_router.dart';
 import 'app/theme/app_theme.dart';
 import 'app/theme/app_colors.dart';
@@ -68,11 +70,33 @@ void main() async {
   );
 }
 
-class StudyMateApp extends ConsumerWidget {
+class StudyMateApp extends ConsumerStatefulWidget {
   const StudyMateApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<StudyMateApp> createState() => _StudyMateAppState();
+}
+
+class _StudyMateAppState extends ConsumerState<StudyMateApp> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      try {
+        final notifService = ref.read(notificationServiceProvider);
+        final router = ref.read(appRouterProvider);
+        notifService.setNavigationHandler((route) {
+          router.go(route);
+        });
+        notifService.initialize();
+      } catch (e) {
+        if (kDebugMode) debugPrint('Notification initialization warning: $e');
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final themeMode = ref.watch(themeModeProvider);
     final router = ref.watch(appRouterProvider);
 
@@ -136,7 +160,7 @@ class FirebaseBootstrapErrorApp extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  'We encountered a configuration or network issue while starting the Firebase cloud services.',
+                  'We encountered a configuration or network issue while starting cloud services.',
                   style: AppTextStyles.bodySecondary(
                     context,
                     color: const Color(0xFF94A3B8),
@@ -152,7 +176,9 @@ class FirebaseBootstrapErrorApp extends StatelessWidget {
                     border: Border.all(color: const Color(0xFF334155)),
                   ),
                   child: Text(
-                    errorMessage,
+                    kReleaseMode
+                        ? 'Service initialization is temporarily unavailable. Please retry shortly.'
+                        : errorMessage,
                     style: const TextStyle(
                       fontFamily: 'monospace',
                       fontSize: 12,

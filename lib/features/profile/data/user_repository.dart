@@ -69,11 +69,12 @@ class UserRepository {
     required String displayName,
     required String academicProgram,
     required String targetExam,
+    DateTime? examDate,
     required List<String> enrolledSubjectIds,
     required int dailyGoal,
     String preferredAiMode = 'Student',
   }) async {
-    await _users.doc(uid).set({
+    final data = <String, dynamic>{
       'displayName': displayName,
       'academicProgram': academicProgram,
       'targetExam': targetExam,
@@ -82,7 +83,25 @@ class UserRepository {
       'preferredAiMode': preferredAiMode,
       'onboardingComplete': true,
       'lastActiveAt': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
+    };
+    if (examDate != null) {
+      data['examDate'] = Timestamp.fromDate(examDate);
+    }
+    await _users.doc(uid).set(data, SetOptions(merge: true));
+  }
+
+  Future<void> updateTargetExam(
+    String uid, {
+    required String targetExam,
+    DateTime? examDate,
+  }) async {
+    final data = <String, dynamic>{'targetExam': targetExam};
+    if (examDate != null) {
+      data['examDate'] = Timestamp.fromDate(examDate);
+    } else {
+      data['examDate'] = FieldValue.delete();
+    }
+    await _users.doc(uid).update(data);
   }
 
   Future<void> updatePreferredAiMode(String uid, String mode) async {
@@ -105,6 +124,20 @@ class UserRepository {
     });
   }
 
+  Future<void> _deleteStorageRecursively(Reference ref) async {
+    try {
+      final listResult = await ref.listAll();
+      for (final item in listResult.items) {
+        await item.delete();
+      }
+      for (final prefix in listResult.prefixes) {
+        await _deleteStorageRecursively(prefix);
+      }
+    } catch (e) {
+      debugPrint('Storage recursive deletion warning: $e');
+    }
+  }
+
   /// Permanently purges all user data across all subcollections, user storage files,
   /// and the user profile document.
   Future<void> deleteEntireUserData(String uid) async {
@@ -124,65 +157,28 @@ class UserRepository {
 
     // 1. Purge all standard subcollections
     for (final col in subcollections) {
-      try {
-        final snap = await userRef.collection(col).get();
-        for (final doc in snap.docs) {
-          await doc.reference.delete();
-        }
-      } catch (e, stack) {
-        debugPrint('Error purging subcollection $col for $uid: $e');
-        try {
-          if (!kIsWeb) {
-            FirebaseCrashlytics.instance.recordError(
-              e,
-              stack,
-              reason: 'Purge Subcollection Error: $col',
-              fatal: false,
-            );
-          }
-        } catch (_) {}
+      final snap = await userRef.collection(col).get();
+      for (final doc in snap.docs) {
+        await doc.reference.delete();
       }
     }
 
     // 2. Delete nested chat threads and messages
-    try {
-      final threads = await userRef.collection('chatThreads').get();
-      for (final t in threads.docs) {
-        final msgs = await t.reference.collection('messages').get();
-        for (final m in msgs.docs) {
-          await m.reference.delete();
-        }
-        await t.reference.delete();
+    final threads = await userRef.collection('chatThreads').get();
+    for (final t in threads.docs) {
+      final msgs = await t.reference.collection('messages').get();
+      for (final m in msgs.docs) {
+        await m.reference.delete();
       }
-    } catch (e, stack) {
-      debugPrint('Error purging chat threads for $uid: $e');
-      try {
-        if (!kIsWeb) {
-          FirebaseCrashlytics.instance.recordError(
-            e,
-            stack,
-            reason: 'Purge ChatThreads Error',
-            fatal: false,
-          );
-        }
-      } catch (_) {}
+      await t.reference.delete();
     }
 
-    // 3. Purge user-owned Storage objects under users/{uid}
+    // 3. Truly recursive purge of user-owned Storage objects under users/{uid}
     try {
       final storageRef = FirebaseStorage.instance.ref('users/$uid');
-      final listResult = await storageRef.listAll();
-      for (final item in listResult.items) {
-        await item.delete();
-      }
-      for (final prefix in listResult.prefixes) {
-        final subList = await prefix.listAll();
-        for (final subItem in subList.items) {
-          await subItem.delete();
-        }
-      }
+      await _deleteStorageRecursively(storageRef);
     } catch (e) {
-      debugPrint('Storage purge info for $uid (may have no uploads): $e');
+      debugPrint('Storage purge info for $uid: $e');
     }
 
     // 4. Delete user root profile document

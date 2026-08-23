@@ -23,6 +23,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   final _programController = TextEditingController();
   final _examController = TextEditingController();
 
+  DateTime? _selectedExamDate;
   final List<String> _selectedSubjectIds = ['os', 'py'];
   ExplanationMode _preferredAiMode = ExplanationMode.student;
   int _dailyGoal = 30;
@@ -63,6 +64,19 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     });
   }
 
+  Future<void> _pickExamDate() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedExamDate ?? now.add(const Duration(days: 60)),
+      firstDate: now,
+      lastDate: now.add(const Duration(days: 730)),
+    );
+    if (picked != null) {
+      setState(() => _selectedExamDate = picked);
+    }
+  }
+
   Future<void> _completeOnboarding() async {
     final name = _nameController.text.trim();
     if (name.isEmpty) {
@@ -99,19 +113,21 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               targetExam: _examController.text.trim().isNotEmpty
                   ? _examController.text.trim()
                   : 'Semester Exams',
+              examDate: _selectedExamDate,
               enrolledSubjectIds: _selectedSubjectIds,
               dailyGoal: _dailyGoal,
               preferredAiMode: _preferredAiMode.label,
             );
 
         ref.read(firebaseServiceProvider).logOnboardingCompleted();
-        // The router will automatically redirect to home based on profile update
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not complete onboarding. Please try again.'),
+          ),
+        );
         setState(() => _isLoading = false);
       }
     }
@@ -159,6 +175,62 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 _examController,
                 isDark,
                 LucideIcons.target,
+              ),
+              const SizedBox(height: 14),
+
+              InkWell(
+                onTap: _pickExamDate,
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 14,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? AppColors.surfaceDark
+                        : AppColors.surfaceLight,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isDark
+                          ? AppColors.cardBorderDark
+                          : AppColors.cardBorderLight,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        LucideIcons.calendar,
+                        size: 20,
+                        color: AppColors.primary,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          _selectedExamDate != null
+                              ? 'Exam Date: ${_selectedExamDate!.day}/${_selectedExamDate!.month}/${_selectedExamDate!.year}'
+                              : 'Optional Target Exam Date (Tap to set)',
+                          style: _selectedExamDate != null
+                              ? AppTextStyles.body(
+                                  context,
+                                  fontWeight: FontWeight.w600,
+                                )
+                              : AppTextStyles.bodySecondary(context),
+                        ),
+                      ),
+                      if (_selectedExamDate != null)
+                        IconButton(
+                          icon: const Icon(LucideIcons.x, size: 16),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          onPressed: () =>
+                              setState(() => _selectedExamDate = null),
+                        )
+                      else
+                        const Icon(LucideIcons.chevronRight, size: 18),
+                    ],
+                  ),
+                ),
               ),
               const SizedBox(height: 28),
 

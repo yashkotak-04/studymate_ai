@@ -61,5 +61,55 @@ void main() {
         () => mockDocument.set(any(that: isA<Map<String, dynamic>>()), any()),
       ).called(1);
     });
+
+    test('updateOnboarding sets profile data and optional examDate', () async {
+      when(() => mockDocument.set(any(), any())).thenAnswer((_) async {});
+      final examDate = DateTime(2026, 11, 15);
+
+      await userRepository.updateOnboarding(
+        'test_uid',
+        displayName: 'Yash',
+        academicProgram: 'Diploma CS',
+        targetExam: 'Finals',
+        examDate: examDate,
+        enrolledSubjectIds: ['os', 'py'],
+        dailyGoal: 45,
+      );
+
+      verify(
+        () => mockDocument.set(
+          any(
+            that: isA<Map<String, dynamic>>()
+                .having((m) => m['displayName'], 'displayName', 'Yash')
+                .having((m) => m['targetExam'], 'targetExam', 'Finals')
+                .having((m) => m['dailyStudyGoalMinutes'], 'dailyGoal', 45),
+          ),
+          any(),
+        ),
+      ).called(1);
+    });
+
+    test('updateTargetExam updates targetExam and examDate', () async {
+      when(() => mockDocument.update(any())).thenAnswer((_) async {});
+      final examDate = DateTime(2026, 12, 1);
+
+      await userRepository.updateTargetExam(
+        'test_uid',
+        targetExam: 'Winter Exam',
+        examDate: examDate,
+      );
+
+      verify(
+        () => mockDocument.update(
+          any(
+            that: isA<Map<String, dynamic>>().having(
+              (m) => m['targetExam'],
+              'targetExam',
+              'Winter Exam',
+            ),
+          ),
+        ),
+      ).called(1);
+    });
   });
 }

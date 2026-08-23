@@ -285,4 +285,46 @@ class ProgressRepository {
         .snapshots()
         .map((snapshot) => snapshot.docs.map((d) => d.data()).toList());
   }
+
+  /// Scalable period analytics query: fetches quizzes bounded strictly by date range
+  /// rather than relying on a small fixed limit(50), guaranteeing accurate Week/Month stats
+  /// even when a student completes >50 attempts within a reporting period.
+  Future<List<QuizSession>> getQuizzesInDateRange(
+    String uid,
+    DateTime startDate,
+    DateTime endDate,
+  ) async {
+    final query = await _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('quizzes')
+        .where('endTime', isGreaterThanOrEqualTo: Timestamp.fromDate(startDate))
+        .where('endTime', isLessThanOrEqualTo: Timestamp.fromDate(endDate))
+        .orderBy('endTime', descending: true)
+        .get();
+
+    return query.docs
+        .map((doc) => QuizSession.fromJson(doc.data(), doc.id))
+        .toList();
+  }
+
+  Stream<List<QuizSession>> streamQuizzesInDateRange(
+    String uid,
+    DateTime startDate,
+    DateTime endDate,
+  ) {
+    return _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('quizzes')
+        .where('endTime', isGreaterThanOrEqualTo: Timestamp.fromDate(startDate))
+        .where('endTime', isLessThanOrEqualTo: Timestamp.fromDate(endDate))
+        .orderBy('endTime', descending: true)
+        .snapshots()
+        .map(
+          (snap) => snap.docs
+              .map((d) => QuizSession.fromJson(d.data(), d.id))
+              .toList(),
+        );
+  }
 }
