@@ -23,7 +23,9 @@ class StudyPlanTask {
 
   factory StudyPlanTask.fromJson(Map<String, dynamic> json) {
     return StudyPlanTask(
-      id: json['id'] as String? ?? DateTime.now().millisecondsSinceEpoch.toString(),
+      id:
+          json['id'] as String? ??
+          DateTime.now().millisecondsSinceEpoch.toString(),
       timeSlot: json['timeSlot'] as String? ?? 'Morning',
       subjectId: json['subjectId'] as String? ?? 'os',
       subjectName: json['subjectName'] as String? ?? 'Operating Systems',
@@ -78,7 +80,8 @@ class StudyPlanDay {
 
   factory StudyPlanDay.fromJson(Map<String, dynamic> json) {
     final rawTasks = json['tasks'] as List<dynamic>?;
-    final parsedTasks = rawTasks
+    final parsedTasks =
+        rawTasks
             ?.map((t) => StudyPlanTask.fromJson(t as Map<String, dynamic>))
             .toList() ??
         [];
@@ -98,10 +101,7 @@ class StudyPlanDay {
     };
   }
 
-  StudyPlanDay copyWith({
-    List<StudyPlanTask>? tasks,
-    String? focus,
-  }) {
+  StudyPlanDay copyWith({List<StudyPlanTask>? tasks, String? focus}) {
     return StudyPlanDay(
       dayName: dayName,
       focus: focus ?? this.focus,
@@ -132,8 +132,10 @@ class StudyPlan {
   });
 
   int get totalTasks => days.fold(0, (acc, day) => acc + day.tasks.length);
-  int get completedTasks =>
-      days.fold(0, (acc, day) => acc + day.tasks.where((t) => t.isCompleted).length);
+  int get completedTasks => days.fold(
+    0,
+    (acc, day) => acc + day.tasks.where((t) => t.isCompleted).length,
+  );
   double get completionPercentage =>
       totalTasks > 0 ? (completedTasks / totalTasks) * 100.0 : 0.0;
 
@@ -146,7 +148,8 @@ class StudyPlan {
     }
 
     final rawDays = json['days'] as List<dynamic>?;
-    final parsedDays = rawDays
+    final parsedDays =
+        rawDays
             ?.map((d) => StudyPlanDay.fromJson(d as Map<String, dynamic>))
             .toList() ??
         [];
@@ -156,7 +159,8 @@ class StudyPlan {
       userId: json['userId'] as String? ?? '',
       targetExam: json['targetExam'] as String? ?? 'General Exams',
       dailyGoalMinutes: (json['dailyGoalMinutes'] as num?)?.toInt() ?? 30,
-      overview: json['overview'] as String? ?? 'Personalized AI Weekly Study Plan',
+      overview:
+          json['overview'] as String? ?? 'Personalized AI Weekly Study Plan',
       days: parsedDays,
       createdAt: parseDate(json['createdAt']),
       updatedAt: parseDate(json['updatedAt']),

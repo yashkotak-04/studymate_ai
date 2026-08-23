@@ -37,7 +37,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   final _inputController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final stt.SpeechToText _speech = stt.SpeechToText();
-  
+
   bool _isSpeechAvailable = false;
   bool _isListening = false;
   bool _isTyping = false;
@@ -69,7 +69,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   void _toggleListening() async {
     if (!_isSpeechAvailable) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Speech recognition is initializing or unavailable on this device.')),
+        const SnackBar(
+          content: Text(
+            'Speech recognition is initializing or unavailable on this device.',
+          ),
+        ),
       );
       return;
     }
@@ -157,7 +161,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       final subjectObj = AppSubjects.getById(subjectId);
 
       // Fetch latest messages for context
-      final messagesAsync = ref.read(threadMessagesProvider(currentThreadId)).value ?? [userMsg];
+      final messagesAsync =
+          ref.read(threadMessagesProvider(currentThreadId)).value ?? [userMsg];
 
       final stream = aiService.streamChat(
         prompt: query,
@@ -190,7 +195,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         final errorMsg = ChatMessage(
           id: DateTime.now().millisecondsSinceEpoch.toString(),
           role: 'model',
-          text: 'Unable to reach AI Tutor. Please check your network connection and try again.',
+          text:
+              'Unable to reach AI Tutor. Please check your network connection and try again.',
           timestamp: DateTime.now(),
         );
         await chatRepo.addMessage(user.uid, currentThreadId, errorMsg);
@@ -208,17 +214,26 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   void _handleQuickAction(String action, List<ChatMessage> messages) async {
     if (messages.isEmpty || _isTyping) return;
-    final lastModelMessage = messages.lastWhere((m) => m.role == 'model', orElse: () => messages.last);
+    final lastModelMessage = messages.lastWhere(
+      (m) => m.role == 'model',
+      orElse: () => messages.last,
+    );
 
     switch (action) {
       case 'Explain Simpler':
-        _sendMessage('Can you explain the previous concept in much simpler, intuitive terms with an everyday analogy?');
+        _sendMessage(
+          'Can you explain the previous concept in much simpler, intuitive terms with an everyday analogy?',
+        );
         break;
       case 'Give Example':
-        _sendMessage('Please provide a concrete practical code or calculation example of this.');
+        _sendMessage(
+          'Please provide a concrete practical code or calculation example of this.',
+        );
         break;
       case 'Real-world Analogy':
-        _sendMessage('Can you provide a vivid real-world engineering analogy for this?');
+        _sendMessage(
+          'Can you provide a vivid real-world engineering analogy for this?',
+        );
         break;
       case 'Generate MCQs':
         context.push('/practice');
@@ -255,7 +270,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             padding: const EdgeInsets.fromLTRB(18, 12, 18, 24),
             decoration: BoxDecoration(
               color: Theme.of(context).scaffoldBackgroundColor,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(24),
+              ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -266,7 +283,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     height: 4,
                     margin: const EdgeInsets.only(bottom: 16),
                     decoration: BoxDecoration(
-                      color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                      color: isDark
+                          ? AppColors.darkBorder
+                          : AppColors.lightBorder,
                       borderRadius: BorderRadius.circular(99),
                     ),
                   ),
@@ -274,9 +293,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('Chat History', style: AppTextStyles.displayBold(context, fontSize: 18)),
+                    Text(
+                      'Chat History',
+                      style: AppTextStyles.displayBold(context, fontSize: 18),
+                    ),
                     IconButton(
-                      icon: const Icon(LucideIcons.plusCircle, color: AppColors.primary),
+                      icon: const Icon(
+                        LucideIcons.plusCircle,
+                        color: AppColors.primary,
+                      ),
                       tooltip: 'New Conversation',
                       onPressed: () {
                         Navigator.pop(context);
@@ -291,7 +316,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     data: (threads) {
                       if (threads.isEmpty) {
                         return Center(
-                          child: Text('No previous conversations.', style: AppTextStyles.bodySecondary(context)),
+                          child: Text(
+                            'No previous conversations.',
+                            style: AppTextStyles.bodySecondary(context),
+                          ),
                         );
                       }
                       return ListView.separated(
@@ -299,13 +327,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                         separatorBuilder: (_, __) => const SizedBox(height: 8),
                         itemBuilder: (context, index) {
                           final thread = threads[index];
-                          final isActive = thread.id == ref.watch(activeThreadIdProvider);
+                          final isActive =
+                              thread.id == ref.watch(activeThreadIdProvider);
 
                           return CustomCard(
                             padding: const EdgeInsets.all(12),
                             onTap: () {
-                              ref.read(activeThreadIdProvider.notifier).state = thread.id;
-                              ref.read(activeExplanationModeProvider.notifier).state = thread.mode;
+                              ref.read(activeThreadIdProvider.notifier).state =
+                                  thread.id;
+                              ref
+                                  .read(activeExplanationModeProvider.notifier)
+                                  .state = thread
+                                  .mode;
                               Navigator.pop(context);
                             },
                             child: Row(
@@ -316,30 +349,43 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                                   decoration: BoxDecoration(
                                     color: isActive
                                         ? AppColors.primary
-                                        : (isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                                        : (isDark
+                                              ? AppColors.darkBorder
+                                              : AppColors.lightBorder),
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Icon(
                                     LucideIcons.messageSquare,
                                     size: 16,
-                                    color: isActive ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
+                                    color: isActive
+                                        ? Colors.white
+                                        : (isDark
+                                              ? Colors.white70
+                                              : Colors.black87),
                                   ),
                                 ),
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         thread.title,
-                                        style: AppTextStyles.body(context, fontWeight: FontWeight.w700),
+                                        style: AppTextStyles.body(
+                                          context,
+                                          fontWeight: FontWeight.w700,
+                                        ),
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                       ),
                                       if (thread.lastMessagePreview != null)
                                         Text(
                                           thread.lastMessagePreview!,
-                                          style: AppTextStyles.bodySecondary(context, fontSize: 12),
+                                          style: AppTextStyles.bodySecondary(
+                                            context,
+                                            fontSize: 12,
+                                          ),
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
                                         ),
@@ -347,11 +393,22 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                                   ),
                                 ),
                                 IconButton(
-                                  icon: const Icon(LucideIcons.trash2, size: 16, color: AppColors.error),
+                                  icon: const Icon(
+                                    LucideIcons.trash2,
+                                    size: 16,
+                                    color: AppColors.error,
+                                  ),
                                   onPressed: () async {
-                                    await ref.read(chatRepositoryProvider).deleteThread(user.uid, thread.id);
+                                    await ref
+                                        .read(chatRepositoryProvider)
+                                        .deleteThread(user.uid, thread.id);
                                     if (isActive) {
-                                      ref.read(activeThreadIdProvider.notifier).state = null;
+                                      ref
+                                              .read(
+                                                activeThreadIdProvider.notifier,
+                                              )
+                                              .state =
+                                          null;
                                     }
                                   },
                                 ),
@@ -361,8 +418,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                         },
                       );
                     },
-                    loading: () => const Center(child: CircularProgressIndicator()),
-                    error: (e, _) => Center(child: Text('Error loading history: $e')),
+                    loading: () =>
+                        const Center(child: CircularProgressIndicator()),
+                    error: (e, _) =>
+                        Center(child: Text('Error loading history: $e')),
                   ),
                 ),
               ],
@@ -394,12 +453,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   height: 4,
                   margin: const EdgeInsets.only(bottom: 16),
                   decoration: BoxDecoration(
-                    color: Theme.of(context).brightness == Brightness.dark ? AppColors.darkBorder : AppColors.lightBorder,
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? AppColors.darkBorder
+                        : AppColors.lightBorder,
                     borderRadius: BorderRadius.circular(99),
                   ),
                 ),
               ),
-              Text('Explanation Mode', style: AppTextStyles.displayBold(context, fontSize: 17)),
+              Text(
+                'Explanation Mode',
+                style: AppTextStyles.displayBold(context, fontSize: 17),
+              ),
               const SizedBox(height: 4),
               Text(
                 'Customize how deep and formal the AI tutor explanations are.',
@@ -407,26 +471,33 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               ),
               const SizedBox(height: 16),
               ...ExplanationMode.values.map((mode) {
-                final isSelected = ref.watch(activeExplanationModeProvider) == mode;
+                final isSelected =
+                    ref.watch(activeExplanationModeProvider) == mode;
                 return InkWell(
                   onTap: () {
-                    ref.read(activeExplanationModeProvider.notifier).state = mode;
+                    ref.read(activeExplanationModeProvider.notifier).state =
+                        mode;
                     final activeThread = ref.read(activeThreadIdProvider);
                     final user = ref.read(authRepositoryProvider).currentUser;
                     if (activeThread != null && user != null) {
-                      ref.read(chatRepositoryProvider).updateThreadMode(user.uid, activeThread, mode);
+                      ref
+                          .read(chatRepositoryProvider)
+                          .updateThreadMode(user.uid, activeThread, mode);
                     }
                     Navigator.pop(context);
                   },
                   borderRadius: BorderRadius.circular(12),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 12,
+                    ),
                     margin: const EdgeInsets.only(bottom: 6),
                     decoration: BoxDecoration(
                       color: isSelected
                           ? (Theme.of(context).brightness == Brightness.dark
-                              ? AppColors.primary.withOpacity(0.2)
-                              : AppColors.primaryLight)
+                                ? AppColors.primary.withOpacity(0.2)
+                                : AppColors.primaryLight)
                           : Colors.transparent,
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -438,24 +509,48 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                           decoration: BoxDecoration(
                             color: isSelected
                                 ? AppColors.primary
-                                : (Theme.of(context).brightness == Brightness.dark
-                                    ? AppColors.darkBorder
-                                    : AppColors.lightBorder),
+                                : (Theme.of(context).brightness ==
+                                          Brightness.dark
+                                      ? AppColors.darkBorder
+                                      : AppColors.lightBorder),
                             borderRadius: BorderRadius.circular(10),
                           ),
-                          child: Icon(mode.icon, size: 18, color: isSelected ? Colors.white : AppColors.primary),
+                          child: Icon(
+                            mode.icon,
+                            size: 18,
+                            color: isSelected
+                                ? Colors.white
+                                : AppColors.primary,
+                          ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(mode.label, style: AppTextStyles.body(context, fontWeight: FontWeight.w700)),
-                              Text(mode.desc, style: AppTextStyles.bodySecondary(context, fontSize: 12)),
+                              Text(
+                                mode.label,
+                                style: AppTextStyles.body(
+                                  context,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              Text(
+                                mode.desc,
+                                style: AppTextStyles.bodySecondary(
+                                  context,
+                                  fontSize: 12,
+                                ),
+                              ),
                             ],
                           ),
                         ),
-                        if (isSelected) const Icon(LucideIcons.check, color: AppColors.primary, size: 20),
+                        if (isSelected)
+                          const Icon(
+                            LucideIcons.check,
+                            color: AppColors.primary,
+                            size: 20,
+                          ),
                       ],
                     ),
                   ),
@@ -500,26 +595,39 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     onPressed: _showThreadHistorySheet,
                   ),
                   IconButton(
-                    icon: const Icon(LucideIcons.plusCircle, size: 20, color: AppColors.primary),
+                    icon: const Icon(
+                      LucideIcons.plusCircle,
+                      size: 20,
+                      color: AppColors.primary,
+                    ),
                     tooltip: 'New Chat',
                     onPressed: _startNewConversation,
                   ),
                 ],
               ),
             ),
-            
+
             // Mode and Subject selection chips
             Padding(
-              padding: const EdgeInsets.only(left: 18.0, right: 18.0, bottom: 8.0),
+              padding: const EdgeInsets.only(
+                left: 18.0,
+                right: 18.0,
+                bottom: 8.0,
+              ),
               child: Row(
                 children: [
                   InkWell(
                     onTap: _showModeSheet,
                     borderRadius: BorderRadius.circular(999),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
                       decoration: BoxDecoration(
-                        color: isDark ? AppColors.primary.withOpacity(0.2) : AppColors.primaryLight,
+                        color: isDark
+                            ? AppColors.primary.withOpacity(0.2)
+                            : AppColors.primaryLight,
                         borderRadius: BorderRadius.circular(999),
                       ),
                       child: Row(
@@ -527,9 +635,21 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                         children: [
                           Icon(mode.icon, size: 13, color: AppColors.primary),
                           const SizedBox(width: 6),
-                          Text('${mode.label} mode', style: AppTextStyles.body(context, fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.primary)),
+                          Text(
+                            '${mode.label} mode',
+                            style: AppTextStyles.body(
+                              context,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.primary,
+                            ),
+                          ),
                           const SizedBox(width: 4),
-                          const Icon(LucideIcons.chevronDown, size: 13, color: AppColors.primary),
+                          const Icon(
+                            LucideIcons.chevronDown,
+                            size: 13,
+                            color: AppColors.primary,
+                          ),
                         ],
                       ),
                     ),
@@ -537,7 +657,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   const SizedBox(width: 8),
                   if (_isListening)
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.error.withOpacity(0.15),
                         borderRadius: BorderRadius.circular(999),
@@ -546,9 +669,21 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(LucideIcons.mic, size: 13, color: AppColors.error),
+                          const Icon(
+                            LucideIcons.mic,
+                            size: 13,
+                            color: AppColors.error,
+                          ),
                           const SizedBox(width: 4),
-                          Text('Listening...', style: AppTextStyles.body(context, fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.error)),
+                          Text(
+                            'Listening...',
+                            style: AppTextStyles.body(
+                              context,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.error,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -561,7 +696,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   ? _buildEmptyState(isDark)
                   : ListView.builder(
                       controller: _scrollController,
-                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 18,
+                        vertical: 10,
+                      ),
                       itemCount: messages.length + (_isTyping ? 1 : 0),
                       itemBuilder: (context, index) {
                         if (index == messages.length && _isTyping) {
@@ -569,7 +707,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                             ChatMessage(
                               id: 'temp',
                               role: 'model',
-                              text: _currentStreamedResponse.isEmpty ? 'Analyzing study concepts...' : _currentStreamedResponse,
+                              text: _currentStreamedResponse.isEmpty
+                                  ? 'Analyzing study concepts...'
+                                  : _currentStreamedResponse,
                               timestamp: DateTime.now(),
                             ),
                             isDark,
@@ -577,7 +717,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                         }
 
                         final msg = messages[index];
-                        final isLastModel = msg.role == 'model' && index == messages.length - 1 && !_isTyping;
+                        final isLastModel =
+                            msg.role == 'model' &&
+                            index == messages.length - 1 &&
+                            !_isTyping;
 
                         return Column(
                           children: [
@@ -593,7 +736,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                border: Border(top: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.lightBorder)),
+                border: Border(
+                  top: BorderSide(
+                    color: isDark
+                        ? AppColors.darkBorder
+                        : AppColors.lightBorder,
+                  ),
+                ),
               ),
               child: Row(
                 children: [
@@ -602,18 +751,33 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                       controller: _inputController,
                       onSubmitted: (val) => _sendMessage(val),
                       decoration: InputDecoration(
-                        hintText: _isListening ? 'Listening to your voice...' : 'Ask about any topic, doubt, or code...',
+                        hintText: _isListening
+                            ? 'Listening to your voice...'
+                            : 'Ask about any topic, doubt, or code...',
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(999),
-                          borderSide: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                          borderSide: BorderSide(
+                            color: isDark
+                                ? AppColors.darkBorder
+                                : AppColors.lightBorder,
+                          ),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(999),
-                          borderSide: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                          borderSide: BorderSide(
+                            color: isDark
+                                ? AppColors.darkBorder
+                                : AppColors.lightBorder,
+                          ),
                         ),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 11,
+                        ),
                         filled: true,
-                        fillColor: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+                        fillColor: isDark
+                            ? AppColors.darkSurface
+                            : AppColors.lightSurface,
                       ),
                       style: AppTextStyles.body(context),
                     ),
@@ -624,14 +788,28 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     height: 42,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      border: Border.all(color: _isListening ? AppColors.error : (isDark ? AppColors.darkBorder : AppColors.lightBorder)),
-                      color: _isListening ? AppColors.error.withOpacity(0.2) : (isDark ? AppColors.darkSurface : AppColors.lightSurface),
+                      border: Border.all(
+                        color: _isListening
+                            ? AppColors.error
+                            : (isDark
+                                  ? AppColors.darkBorder
+                                  : AppColors.lightBorder),
+                      ),
+                      color: _isListening
+                          ? AppColors.error.withOpacity(0.2)
+                          : (isDark
+                                ? AppColors.darkSurface
+                                : AppColors.lightSurface),
                     ),
                     child: IconButton(
                       icon: Icon(
                         _isListening ? LucideIcons.micOff : LucideIcons.mic,
                         size: 18,
-                        color: _isListening ? AppColors.error : (isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary),
+                        color: _isListening
+                            ? AppColors.error
+                            : (isDark
+                                  ? AppColors.darkTextSecondary
+                                  : AppColors.lightTextSecondary),
                       ),
                       onPressed: _toggleListening,
                       tooltip: 'Voice Input',
@@ -671,10 +849,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               width: 56,
               height: 56,
               decoration: BoxDecoration(
-                color: isDark ? AppColors.primary.withOpacity(0.2) : AppColors.primaryLight,
+                color: isDark
+                    ? AppColors.primary.withOpacity(0.2)
+                    : AppColors.primaryLight,
                 shape: BoxShape.circle,
               ),
-              child: const Icon(LucideIcons.sparkles, size: 28, color: AppColors.primary),
+              child: const Icon(
+                LucideIcons.sparkles,
+                size: 28,
+                color: AppColors.primary,
+              ),
             ),
             const SizedBox(height: 16),
             Text(
@@ -689,11 +873,20 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
-            _buildPromptCard('Explain Deadlock Prevention vs Avoidance', isDark),
+            _buildPromptCard(
+              'Explain Deadlock Prevention vs Avoidance',
+              isDark,
+            ),
             const SizedBox(height: 8),
-            _buildPromptCard('How does Dijkstra\'s Algorithm find the shortest path?', isDark),
+            _buildPromptCard(
+              'How does Dijkstra\'s Algorithm find the shortest path?',
+              isDark,
+            ),
             const SizedBox(height: 8),
-            _buildPromptCard('Give a real-world example of 3NF Database Normalization', isDark),
+            _buildPromptCard(
+              'Give a real-world example of 3NF Database Normalization',
+              isDark,
+            ),
           ],
         ),
       ),
@@ -706,12 +899,27 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       onTap: () => _sendMessage(prompt),
       child: Row(
         children: [
-          const Icon(LucideIcons.helpCircle, size: 16, color: AppColors.primary),
+          const Icon(
+            LucideIcons.helpCircle,
+            size: 16,
+            color: AppColors.primary,
+          ),
           const SizedBox(width: 10),
           Expanded(
-            child: Text(prompt, style: AppTextStyles.body(context, fontSize: 13, fontWeight: FontWeight.w600)),
+            child: Text(
+              prompt,
+              style: AppTextStyles.body(
+                context,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
-          const Icon(LucideIcons.arrowRight, size: 14, color: AppColors.primary),
+          const Icon(
+            LucideIcons.arrowRight,
+            size: 14,
+            color: AppColors.primary,
+          ),
         ],
       ),
     );
@@ -722,7 +930,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12.0),
       child: Row(
-        mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment: isUser
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (!isUser)
@@ -734,14 +944,26 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 color: AppColors.primary,
                 shape: BoxShape.circle,
               ),
-              child: const Icon(LucideIcons.sparkles, size: 14, color: Colors.white),
+              child: const Icon(
+                LucideIcons.sparkles,
+                size: 14,
+                color: Colors.white,
+              ),
             ),
           Flexible(
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               decoration: BoxDecoration(
-                color: isUser ? AppColors.primary : (isDark ? AppColors.darkSurface : AppColors.lightSurface),
-                border: isUser ? null : Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                color: isUser
+                    ? AppColors.primary
+                    : (isDark ? AppColors.darkSurface : AppColors.lightSurface),
+                border: isUser
+                    ? null
+                    : Border.all(
+                        color: isDark
+                            ? AppColors.darkBorder
+                            : AppColors.lightBorder,
+                      ),
                 borderRadius: BorderRadius.only(
                   topLeft: const Radius.circular(18),
                   topRight: const Radius.circular(18),
@@ -753,7 +975,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 msg.text,
                 style: AppTextStyles.body(
                   context,
-                  color: isUser ? Colors.white : (isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary),
+                  color: isUser
+                      ? Colors.white
+                      : (isDark
+                            ? AppColors.darkTextPrimary
+                            : AppColors.lightTextPrimary),
                 ).copyWith(height: 1.5),
               ),
             ),
@@ -769,19 +995,24 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Row(
-          children: [
-            'Explain Simpler',
-            'Give Example',
-            'Real-world Analogy',
-            'Generate MCQs',
-            'Summarize'
-          ].map((action) => Padding(
-            padding: const EdgeInsets.only(right: 6.0),
-            child: CustomChip(
-              label: action,
-              onTap: () => _handleQuickAction(action, messages),
-            ),
-          )).toList(),
+          children:
+              [
+                    'Explain Simpler',
+                    'Give Example',
+                    'Real-world Analogy',
+                    'Generate MCQs',
+                    'Summarize',
+                  ]
+                  .map(
+                    (action) => Padding(
+                      padding: const EdgeInsets.only(right: 6.0),
+                      child: CustomChip(
+                        label: action,
+                        onTap: () => _handleQuickAction(action, messages),
+                      ),
+                    ),
+                  )
+                  .toList(),
         ),
       ),
     );

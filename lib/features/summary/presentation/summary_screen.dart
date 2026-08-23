@@ -57,7 +57,9 @@ class _SummaryScreenState extends ConsumerState<SummaryScreen> {
       if (file.path == null) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Could not access selected file path.')),
+            const SnackBar(
+              content: Text('Could not access selected file path.'),
+            ),
           );
         }
         return;
@@ -67,7 +69,9 @@ class _SummaryScreenState extends ConsumerState<SummaryScreen> {
       if (!await f.exists()) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Selected file does not exist on disk.')),
+            const SnackBar(
+              content: Text('Selected file does not exist on disk.'),
+            ),
           );
         }
         return;
@@ -77,7 +81,11 @@ class _SummaryScreenState extends ConsumerState<SummaryScreen> {
       if (fileSize > maxMb * 1024 * 1024) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('File size (${(fileSize / (1024 * 1024)).toStringAsFixed(1)}MB) exceeds the ${maxMb}MB limit.')),
+            SnackBar(
+              content: Text(
+                'File size (${(fileSize / (1024 * 1024)).toStringAsFixed(1)}MB) exceeds the ${maxMb}MB limit.',
+              ),
+            ),
           );
         }
         return;
@@ -96,7 +104,8 @@ class _SummaryScreenState extends ConsumerState<SummaryScreen> {
         }
         _pickedFileBytes = bytes;
         _pickedFileMimeType = 'application/pdf';
-        _textController.text = '[PDF Document: ${file.name} (${(bytes.lengthInBytes / 1024).toStringAsFixed(1)} KB) - Ready for AI summarization & quiz generation]';
+        _textController.text =
+            '[PDF Document: ${file.name} (${(bytes.lengthInBytes / 1024).toStringAsFixed(1)} KB) - Ready for AI summarization & quiz generation]';
       } else if (extension == 'txt') {
         final text = await f.readAsString();
         if (text.trim().isEmpty) {
@@ -106,18 +115,28 @@ class _SummaryScreenState extends ConsumerState<SummaryScreen> {
         _pickedFileMimeType = null;
         _textController.text = text;
       } else {
-        throw Exception('Unsupported file format. Please upload a PDF or TXT file.');
+        throw Exception(
+          'Unsupported file format. Please upload a PDF or TXT file.',
+        );
       }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Loaded ${file.name} successfully! Ready to summarize.')),
+          SnackBar(
+            content: Text(
+              'Loaded ${file.name} successfully! Ready to summarize.',
+            ),
+          ),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to read document: ${e.toString().replaceAll('Exception:', '').trim()}')),
+          SnackBar(
+            content: Text(
+              'Failed to read document: ${e.toString().replaceAll('Exception:', '').trim()}',
+            ),
+          ),
         );
       }
     } finally {
@@ -133,7 +152,9 @@ class _SummaryScreenState extends ConsumerState<SummaryScreen> {
 
     if (!hasBytes && text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please paste some text notes or upload a document.')),
+        const SnackBar(
+          content: Text('Please paste some text notes or upload a document.'),
+        ),
       );
       return;
     }
@@ -164,22 +185,32 @@ class _SummaryScreenState extends ConsumerState<SummaryScreen> {
 
       final authUser = ref.read(authRepositoryProvider).currentUser;
       if (authUser != null) {
-        final title = _pickedFileName ?? (text.length > 30 ? '${text.substring(0, 30)}...' : text);
+        final title =
+            _pickedFileName ??
+            (text.length > 30 ? '${text.substring(0, 30)}...' : text);
         final doc = SummaryDocument(
           id: 'summary_${DateTime.now().millisecondsSinceEpoch}',
           userId: authUser.uid,
           title: title,
-          sourceText: hasBytes ? 'Uploaded PDF: $_pickedFileName' : (text.length > 1000 ? '${text.substring(0, 1000)}...' : text),
+          sourceText: hasBytes
+              ? 'Uploaded PDF: $_pickedFileName'
+              : (text.length > 1000 ? '${text.substring(0, 1000)}...' : text),
           summary: summary,
           createdAt: DateTime.now(),
         );
         await ref.read(summaryRepositoryProvider).saveSummary(doc);
-        ref.read(firebaseServiceProvider).logSummaryGenerated(_pickedFileName != null ? 'pdf' : 'text');
+        ref
+            .read(firebaseServiceProvider)
+            .logSummaryGenerated(_pickedFileName != null ? 'pdf' : 'text');
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to generate summary: ${e.toString().replaceAll('Exception:', '').trim()}')),
+          SnackBar(
+            content: Text(
+              'Failed to generate summary: ${e.toString().replaceAll('Exception:', '').trim()}',
+            ),
+          ),
         );
       }
     } finally {
@@ -266,7 +297,9 @@ class _SummaryScreenState extends ConsumerState<SummaryScreen> {
             padding: const EdgeInsets.fromLTRB(18, 12, 18, 24),
             decoration: BoxDecoration(
               color: Theme.of(context).scaffoldBackgroundColor,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(24),
+              ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -277,24 +310,33 @@ class _SummaryScreenState extends ConsumerState<SummaryScreen> {
                     height: 4,
                     margin: const EdgeInsets.only(bottom: 16),
                     decoration: BoxDecoration(
-                      color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                      color: isDark
+                          ? AppColors.darkBorder
+                          : AppColors.lightBorder,
                       borderRadius: BorderRadius.circular(99),
                     ),
                   ),
                 ),
-                Text('Saved Summaries', style: AppTextStyles.displayBold(context, fontSize: 18)),
+                Text(
+                  'Saved Summaries',
+                  style: AppTextStyles.displayBold(context, fontSize: 18),
+                ),
                 const SizedBox(height: 12),
                 Expanded(
                   child: summariesAsync.when(
                     data: (summaries) {
                       if (summaries.isEmpty) {
                         return Center(
-                          child: Text('No saved summaries yet.', style: AppTextStyles.bodySecondary(context)),
+                          child: Text(
+                            'No saved summaries yet.',
+                            style: AppTextStyles.bodySecondary(context),
+                          ),
                         );
                       }
                       return ListView.separated(
                         itemCount: summaries.length,
-                        separatorBuilder: (context, index) => const SizedBox(height: 8),
+                        separatorBuilder: (context, index) =>
+                            const SizedBox(height: 8),
                         itemBuilder: (context, index) {
                           final item = summaries[index];
                           return CustomCard(
@@ -309,20 +351,47 @@ class _SummaryScreenState extends ConsumerState<SummaryScreen> {
                             },
                             child: Row(
                               children: [
-                                const Icon(LucideIcons.fileText, color: AppColors.primary, size: 22),
+                                const Icon(
+                                  LucideIcons.fileText,
+                                  color: AppColors.primary,
+                                  size: 22,
+                                ),
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
-                                      Text(item.title, style: AppTextStyles.body(context, fontWeight: FontWeight.w700), maxLines: 1, overflow: TextOverflow.ellipsis),
-                                      Text(item.summary.quickSummary, style: AppTextStyles.bodySecondary(context, fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
+                                      Text(
+                                        item.title,
+                                        style: AppTextStyles.body(
+                                          context,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      Text(
+                                        item.summary.quickSummary,
+                                        style: AppTextStyles.bodySecondary(
+                                          context,
+                                          fontSize: 12,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
                                     ],
                                   ),
                                 ),
                                 IconButton(
-                                  icon: const Icon(LucideIcons.trash2, size: 16, color: AppColors.error),
-                                  onPressed: () => ref.read(summaryRepositoryProvider).deleteSummary(user.uid, item.id),
+                                  icon: const Icon(
+                                    LucideIcons.trash2,
+                                    size: 16,
+                                    color: AppColors.error,
+                                  ),
+                                  onPressed: () => ref
+                                      .read(summaryRepositoryProvider)
+                                      .deleteSummary(user.uid, item.id),
                                 ),
                               ],
                             ),
@@ -330,7 +399,8 @@ class _SummaryScreenState extends ConsumerState<SummaryScreen> {
                         },
                       );
                     },
-                    loading: () => const Center(child: CircularProgressIndicator()),
+                    loading: () =>
+                        const Center(child: CircularProgressIndicator()),
                     error: (e, _) => Center(child: Text('Error: $e')),
                   ),
                 ),
@@ -377,44 +447,66 @@ class _SummaryScreenState extends ConsumerState<SummaryScreen> {
                   ),
                 ],
               ),
-              
+
               if (_result == null) ...[
                 TextField(
                   controller: _textController,
                   maxLines: 7,
                   decoration: InputDecoration(
-                    hintText: 'Paste lecture transcripts, textbook pages, or technical notes here...',
+                    hintText:
+                        'Paste lecture transcripts, textbook pages, or technical notes here...',
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                      borderSide: BorderSide(
+                        color: isDark
+                            ? AppColors.darkBorder
+                            : AppColors.lightBorder,
+                      ),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                      borderSide: BorderSide(
+                        color: isDark
+                            ? AppColors.darkBorder
+                            : AppColors.lightBorder,
+                      ),
                     ),
                     filled: true,
-                    fillColor: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+                    fillColor: isDark
+                        ? AppColors.darkSurface
+                        : AppColors.lightSurface,
                   ),
                   style: AppTextStyles.body(context),
                 ),
                 const SizedBox(height: 12),
-                
+
                 // PDF Upload Card
                 InkWell(
                   onTap: _isUploadingPdf ? null : _pickAndProcessPdf,
                   borderRadius: BorderRadius.circular(12),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 14,
+                      horizontal: 16,
+                    ),
                     decoration: BoxDecoration(
-                      color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
-                      border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                      color: isDark
+                          ? AppColors.darkSurface
+                          : AppColors.lightSurface,
+                      border: Border.all(
+                        color: isDark
+                            ? AppColors.darkBorder
+                            : AppColors.lightBorder,
+                      ),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
-                          _isUploadingPdf ? LucideIcons.loader2 : LucideIcons.uploadCloud,
+                          _isUploadingPdf
+                              ? LucideIcons.loader2
+                              : LucideIcons.uploadCloud,
                           size: 18,
                           color: AppColors.primary,
                         ),
@@ -422,17 +514,25 @@ class _SummaryScreenState extends ConsumerState<SummaryScreen> {
                         Text(
                           _pickedFileName != null
                               ? 'Document: $_pickedFileName (Tap to change)'
-                              : (_isUploadingPdf ? 'Reading Document...' : 'Upload PDF or Document'),
-                          style: AppTextStyles.body(context, fontWeight: FontWeight.w600, color: AppColors.primary),
+                              : (_isUploadingPdf
+                                    ? 'Reading Document...'
+                                    : 'Upload PDF or Document'),
+                          style: AppTextStyles.body(
+                            context,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.primary,
+                          ),
                         ),
                       ],
                     ),
                   ),
                 ),
                 const SizedBox(height: 18),
-                
+
                 CustomButton(
-                  text: _isGenerating ? 'Generating Structured Summary...' : 'Generate AI Summary',
+                  text: _isGenerating
+                      ? 'Generating Structured Summary...'
+                      : 'Generate AI Summary',
                   icon: LucideIcons.sparkles,
                   isFullWidth: true,
                   onPressed: _isGenerating ? null : _generateSummary,
@@ -441,20 +541,47 @@ class _SummaryScreenState extends ConsumerState<SummaryScreen> {
                 if (_pickedFileName != null)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 12.0),
-                    child: Text('Source: $_pickedFileName', style: AppTextStyles.bodySecondary(context, fontSize: 12)),
+                    child: Text(
+                      'Source: $_pickedFileName',
+                      style: AppTextStyles.bodySecondary(context, fontSize: 12),
+                    ),
                   ),
-                _buildSection('📝 Quick Summary', _result!.quickSummary, isDark),
-                _buildListSection('✅ Important Points', _result!.importantPoints, isDark),
-                _buildChipsSection('🔑 Key Terms & Concepts', _result!.keyTerms, isDark),
-                _buildListSection('🎯 Exam Focus & High-Weightage Areas', _result!.examFocus, isDark, icon: LucideIcons.target, iconColor: AppColors.primary),
-                _buildRevisionQuestions('❓ Revision & Viva Questions', _result!.revisionQuestions, isDark),
-                
+                _buildSection(
+                  '📝 Quick Summary',
+                  _result!.quickSummary,
+                  isDark,
+                ),
+                _buildListSection(
+                  '✅ Important Points',
+                  _result!.importantPoints,
+                  isDark,
+                ),
+                _buildChipsSection(
+                  '🔑 Key Terms & Concepts',
+                  _result!.keyTerms,
+                  isDark,
+                ),
+                _buildListSection(
+                  '🎯 Exam Focus & High-Weightage Areas',
+                  _result!.examFocus,
+                  isDark,
+                  icon: LucideIcons.target,
+                  iconColor: AppColors.primary,
+                ),
+                _buildRevisionQuestions(
+                  '❓ Revision & Viva Questions',
+                  _result!.revisionQuestions,
+                  isDark,
+                ),
+
                 const SizedBox(height: 12),
                 CustomButton(
                   text: 'Generate Quiz from this Summary',
                   icon: LucideIcons.listChecks,
                   isFullWidth: true,
-                  onPressed: _isGenerating ? null : _generateQuizFromCurrentSummary,
+                  onPressed: _isGenerating
+                      ? null
+                      : _generateQuizFromCurrentSummary,
                 ),
                 const SizedBox(height: 10),
                 CustomButton(
@@ -478,37 +605,64 @@ class _SummaryScreenState extends ConsumerState<SummaryScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: AppTextStyles.body(context, fontSize: 14, fontWeight: FontWeight.w700)),
+          Text(
+            title,
+            style: AppTextStyles.body(
+              context,
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
           const SizedBox(height: 6),
-          Text(content, style: AppTextStyles.bodySecondary(context).copyWith(height: 1.6)),
+          Text(
+            content,
+            style: AppTextStyles.bodySecondary(context).copyWith(height: 1.6),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildListSection(String title, List<String> points, bool isDark, {IconData icon = LucideIcons.check, Color iconColor = AppColors.success}) {
+  Widget _buildListSection(
+    String title,
+    List<String> points,
+    bool isDark, {
+    IconData icon = LucideIcons.check,
+    Color iconColor = AppColors.success,
+  }) {
     if (points.isEmpty) return const SizedBox.shrink();
     return Padding(
       padding: const EdgeInsets.only(bottom: 18.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: AppTextStyles.body(context, fontSize: 14, fontWeight: FontWeight.w700)),
-          const SizedBox(height: 8),
-          ...points.map((p) => Padding(
-            padding: const EdgeInsets.only(bottom: 6.0),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(top: 3.0),
-                  child: Icon(icon, size: 14, color: iconColor),
-                ),
-                const SizedBox(width: 8),
-                Expanded(child: Text(p, style: AppTextStyles.bodySecondary(context))),
-              ],
+          Text(
+            title,
+            style: AppTextStyles.body(
+              context,
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
             ),
-          )),
+          ),
+          const SizedBox(height: 8),
+          ...points.map(
+            (p) => Padding(
+              padding: const EdgeInsets.only(bottom: 6.0),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(top: 3.0),
+                    child: Icon(icon, size: 14, color: iconColor),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(p, style: AppTextStyles.bodySecondary(context)),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -521,47 +675,95 @@ class _SummaryScreenState extends ConsumerState<SummaryScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: AppTextStyles.body(context, fontSize: 14, fontWeight: FontWeight.w700)),
+          Text(
+            title,
+            style: AppTextStyles.body(
+              context,
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
           const SizedBox(height: 8),
           Wrap(
             spacing: 6,
             runSpacing: 6,
-            children: terms.map((t) => Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(
-                color: isDark ? AppColors.primary.withOpacity(0.2) : AppColors.primaryLight,
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: Text(t, style: AppTextStyles.body(context, fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primary)),
-            )).toList(),
+            children: terms
+                .map(
+                  (t) => Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? AppColors.primary.withOpacity(0.2)
+                          : AppColors.primaryLight,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      t,
+                      style: AppTextStyles.body(
+                        context,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
+                )
+                .toList(),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildRevisionQuestions(String title, List<String> questions, bool isDark) {
+  Widget _buildRevisionQuestions(
+    String title,
+    List<String> questions,
+    bool isDark,
+  ) {
     if (questions.isEmpty) return const SizedBox.shrink();
     return Padding(
       padding: const EdgeInsets.only(bottom: 20.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: AppTextStyles.body(context, fontSize: 14, fontWeight: FontWeight.w700)),
+          Text(
+            title,
+            style: AppTextStyles.body(
+              context,
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
           const SizedBox(height: 8),
-          ...questions.map((q) => Padding(
-            padding: const EdgeInsets.only(bottom: 8.0),
-            child: CustomCard(
-              padding: const EdgeInsets.all(12),
-              onTap: () => context.go('/practice'),
-              child: Row(
-                children: [
-                  Expanded(child: Text(q, style: AppTextStyles.body(context, fontSize: 13))),
-                  Icon(LucideIcons.chevronRight, size: 15, color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary),
-                ],
+          ...questions.map(
+            (q) => Padding(
+              padding: const EdgeInsets.only(bottom: 8.0),
+              child: CustomCard(
+                padding: const EdgeInsets.all(12),
+                onTap: () => context.go('/practice'),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        q,
+                        style: AppTextStyles.body(context, fontSize: 13),
+                      ),
+                    ),
+                    Icon(
+                      LucideIcons.chevronRight,
+                      size: 15,
+                      color: isDark
+                          ? AppColors.darkTextSecondary
+                          : AppColors.lightTextSecondary,
+                    ),
+                  ],
+                ),
               ),
             ),
-          )),
+          ),
         ],
       ),
     );

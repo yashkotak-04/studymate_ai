@@ -4,18 +4,14 @@ import 'package:studymate_ai/shared/widgets/custom_chip.dart';
 
 void main() {
   Widget createWidgetUnderTest(Widget child) {
-    return MaterialApp(
-      home: Scaffold(
-        body: child,
-      ),
-    );
+    return MaterialApp(home: Scaffold(body: child));
   }
 
   group('CustomChip Tests', () {
     testWidgets('renders label correctly', (tester) async {
-      await tester.pumpWidget(createWidgetUnderTest(
-        const CustomChip(label: 'OS'),
-      ));
+      await tester.pumpWidget(
+        createWidgetUnderTest(const CustomChip(label: 'OS')),
+      );
 
       expect(find.text('OS'), findsOneWidget);
     });
@@ -23,12 +19,11 @@ void main() {
     testWidgets('calls onTap when tapped', (tester) async {
       bool tapped = false;
 
-      await tester.pumpWidget(createWidgetUnderTest(
-        CustomChip(
-          label: 'DBMS',
-          onTap: () => tapped = true,
+      await tester.pumpWidget(
+        createWidgetUnderTest(
+          CustomChip(label: 'DBMS', onTap: () => tapped = true),
         ),
-      ));
+      );
 
       await tester.tap(find.text('DBMS'));
       await tester.pumpAndSettle();

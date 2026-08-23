@@ -11,7 +11,7 @@ final summaryRepositoryProvider = Provider<SummaryRepository>((ref) {
 final userSummariesProvider = StreamProvider<List<SummaryDocument>>((ref) {
   final user = ref.watch(authStateProvider).value;
   if (user == null) return Stream.value([]);
-  
+
   return ref.watch(summaryRepositoryProvider).getUserSummaries(user.uid);
 });
 
@@ -20,7 +20,10 @@ class SummaryRepository {
 
   SummaryRepository(this._firestore);
 
-  Stream<List<SummaryDocument>> getUserSummaries(String userId, {int limit = 50}) {
+  Stream<List<SummaryDocument>> getUserSummaries(
+    String userId, {
+    int limit = 50,
+  }) {
     return _firestore
         .collection('users')
         .doc(userId)
@@ -28,9 +31,11 @@ class SummaryRepository {
         .orderBy('createdAt', descending: true)
         .limit(limit)
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => SummaryDocument.fromJson(doc.data(), doc.id))
-            .toList());
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => SummaryDocument.fromJson(doc.data(), doc.id))
+              .toList(),
+        );
   }
 
   Future<SummaryDocument?> getSummary(String userId, String summaryId) async {
@@ -53,7 +58,7 @@ class SummaryRepository {
         .doc(summary.userId)
         .collection('summaries')
         .doc(summary.id.isNotEmpty ? summary.id : null);
-        
+
     final data = summary.toJson();
     await docRef.set(data, SetOptions(merge: true));
     return docRef.id;

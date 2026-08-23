@@ -21,7 +21,16 @@ final recommendationsProvider = Provider<List<Recommendation>>((ref) {
   final recommendations = <Recommendation>[];
   final uid = user?.uid ?? '';
 
-  // 1. Check for Weakest Subject (< 70% accuracy)
+  final targetExam = userProfile?.targetExam ?? '';
+  final examDate = userProfile?.examDate;
+  final daysRemaining = examDate != null
+      ? examDate.difference(DateTime.now()).inDays
+      : null;
+  final examSuffix = (daysRemaining != null && daysRemaining > 0)
+      ? ' with $targetExam in $daysRemaining days'
+      : '';
+
+  // 1. Check for Weak Subjects (< 70% accuracy)
   if (subjectProgress.isNotEmpty) {
     for (final sp in subjectProgress) {
       final acc = (sp['accuracy'] as num?)?.toDouble() ?? 0.0;
@@ -32,24 +41,57 @@ final recommendationsProvider = Provider<List<Recommendation>>((ref) {
 
       if (subObj != null && acc < 70.0 && totalQ > 0) {
         final incorrect = totalQ - correctQ;
-        recommendations.add(Recommendation(
-          id: 'rec_weak_$subId',
-          userId: uid,
-          subjectId: subId,
-          subjectName: subObj.name,
-          topic: 'Targeted Practice: ${subObj.name}',
-          title: 'Strengthen ${subObj.shortName} Foundation',
-          reason: 'Your accuracy is currently ${acc.toInt()}% in ${subObj.name}.',
-          evidence: '$incorrect incorrect answers recorded across $totalQ attempted questions.',
-          actionLabel: 'Start 10-Question ${subObj.shortName} Quiz',
-          actionType: 'practice',
-          actionRoute: '/practice',
-          accuracy: acc,
-          isPersonalized: true,
-          createdAt: DateTime.now(),
-        ));
+        final timelineNote = (daysRemaining != null && daysRemaining > 0)
+            ? ', and your $targetExam is $daysRemaining days away.'
+            : '.';
+        recommendations.add(
+          Recommendation(
+            id: 'rec_weak_$subId',
+            userId: uid,
+            subjectId: subId,
+            subjectName: subObj.name,
+            topic: 'Targeted Practice: ${subObj.name}',
+            title: 'Strengthen ${subObj.shortName} Foundation',
+            reason:
+                'Your accuracy is currently ${acc.toInt()}% in ${subObj.name}$examSuffix.',
+            evidence:
+                '$incorrect incorrect answers recorded across $totalQ attempted questions$timelineNote',
+            actionLabel: 'Start 10-Question ${subObj.shortName} Quiz',
+            actionType: 'practice',
+            actionRoute: '/practice',
+            accuracy: acc,
+            isPersonalized: true,
+            createdAt: DateTime.now(),
+          ),
+        );
       }
     }
+  }
+
+  // 1b. Mock Exam Timeline Recommendation if exam date is approaching
+  if (daysRemaining != null &&
+      daysRemaining > 0 &&
+      daysRemaining <= 30 &&
+      targetExam.isNotEmpty) {
+    recommendations.add(
+      Recommendation(
+        id: 'rec_exam_mock',
+        userId: uid,
+        subjectId: 'general',
+        subjectName: targetExam,
+        topic: 'Exam Readiness Simulation',
+        title: '$targetExam Timed Mock Exam',
+        reason:
+            'Your $targetExam is approaching in $daysRemaining days. Test your endurance under exam conditions.',
+        evidence:
+            'Target exam date is scheduled in $daysRemaining days with canonical 2-min per question pacing.',
+        actionLabel: 'Launch 20-Question Mock Test',
+        actionType: 'practice',
+        actionRoute: '/practice',
+        isPersonalized: true,
+        createdAt: DateTime.now(),
+      ),
+    );
   }
 
   // 2. Check for Enrolled Subjects with 0 Practice
@@ -58,73 +100,86 @@ final recommendationsProvider = Provider<List<Recommendation>>((ref) {
       final hasProgress = subjectProgress.any((sp) => sp['id'] == subId);
       final subObj = AppSubjects.getById(subId);
       if (!hasProgress && subObj != null) {
-        recommendations.add(Recommendation(
-          id: 'rec_unstudied_$subId',
-          userId: uid,
-          subjectId: subId,
-          subjectName: subObj.name,
-          topic: 'Initial Assessment',
-          title: 'Assess Your ${subObj.shortName} Baseline',
-          reason: 'You enrolled in ${subObj.name} but haven\'t attempted a quiz yet.',
-          evidence: 'Zero quiz attempts logged in ${subObj.name}.',
-          actionLabel: 'Take 5-Question Diagnostic',
-          actionType: 'practice',
-          actionRoute: '/practice',
-          isPersonalized: true,
-          createdAt: DateTime.now(),
-        ));
+        recommendations.add(
+          Recommendation(
+            id: 'rec_unstudied_$subId',
+            userId: uid,
+            subjectId: subId,
+            subjectName: subObj.name,
+            topic: 'Initial Assessment',
+            title: 'Assess Your ${subObj.shortName} Baseline',
+            reason:
+                'You enrolled in ${subObj.name} but haven\'t attempted a quiz yet.',
+            evidence: 'Zero quiz attempts logged in ${subObj.name}.',
+            actionLabel: 'Take 5-Question Diagnostic',
+            actionType: 'practice',
+            actionRoute: '/practice',
+            isPersonalized: true,
+            createdAt: DateTime.now(),
+          ),
+        );
       }
     }
   }
 
   // 3. General Helpful StudyMate Suggestions
-  recommendations.add(Recommendation(
-    id: 'rec_chat_tutor',
-    userId: uid,
-    subjectId: 'general',
-    subjectName: 'AI Tutor',
-    topic: 'Concept Clarification',
-    title: 'Ask AI Tutor Tricky Viva & Exam Questions',
-    reason: 'Stuck on complex definitions or formulas? Switch to Viva or Exam mode in AI Tutor for structured breakdown.',
-    evidence: 'Supports Beginner, Student, Exam, and Viva modes with real-world analogies.',
-    actionLabel: 'Open AI Tutor',
-    actionType: 'chat',
-    actionRoute: '/chat',
-    isPersonalized: false,
-    createdAt: DateTime.now(),
-  ));
+  recommendations.add(
+    Recommendation(
+      id: 'rec_chat_tutor',
+      userId: uid,
+      subjectId: 'general',
+      subjectName: 'AI Tutor',
+      topic: 'Concept Clarification',
+      title: 'Ask AI Tutor Tricky Viva & Exam Questions',
+      reason:
+          'Stuck on complex definitions or formulas? Switch to Viva or Exam mode in AI Tutor for structured breakdown.',
+      evidence:
+          'Supports Beginner, Student, Exam, and Viva modes with real-world analogies.',
+      actionLabel: 'Open AI Tutor',
+      actionType: 'chat',
+      actionRoute: '/chat',
+      isPersonalized: false,
+      createdAt: DateTime.now(),
+    ),
+  );
 
-  recommendations.add(Recommendation(
-    id: 'rec_summary_notes',
-    userId: uid,
-    subjectId: 'summary',
-    subjectName: 'Smart Notes',
-    topic: 'Exam Revision',
-    title: 'Generate Exam-Focus Revision Summaries',
-    reason: 'Upload your syllabus notes or PDF chapters to extract key terms, formulas, and high-yield revision questions.',
-    evidence: '5-section structured summary with instant quiz generator.',
-    actionLabel: 'Summarize Document',
-    actionType: 'summary',
-    actionRoute: '/summary',
-    isPersonalized: false,
-    createdAt: DateTime.now(),
-  ));
+  recommendations.add(
+    Recommendation(
+      id: 'rec_summary_notes',
+      userId: uid,
+      subjectId: 'summary',
+      subjectName: 'Smart Notes',
+      topic: 'Exam Revision',
+      title: 'Generate Exam-Focus Revision Summaries',
+      reason:
+          'Upload your syllabus notes or PDF chapters to extract key terms, formulas, and high-yield revision questions.',
+      evidence: '5-section structured summary with instant quiz generator.',
+      actionLabel: 'Summarize Document',
+      actionType: 'summary',
+      actionRoute: '/summary',
+      isPersonalized: false,
+      createdAt: DateTime.now(),
+    ),
+  );
 
-  recommendations.add(Recommendation(
-    id: 'rec_planner_schedule',
-    userId: uid,
-    subjectId: 'planner',
-    subjectName: 'Study Schedule',
-    topic: 'Time Management',
-    title: 'Generate Your Weekly Study Timetable',
-    reason: 'Balance your study workload with a 7-day plan tailored to your daily goal.',
-    evidence: 'Generates morning/evening tasks with persistent checkboxes.',
-    actionLabel: 'View AI Planner',
-    actionType: 'planner',
-    actionRoute: '/planner',
-    isPersonalized: false,
-    createdAt: DateTime.now(),
-  ));
+  recommendations.add(
+    Recommendation(
+      id: 'rec_planner_schedule',
+      userId: uid,
+      subjectId: 'planner',
+      subjectName: 'Study Schedule',
+      topic: 'Time Management',
+      title: 'Generate Your Weekly Study Timetable',
+      reason:
+          'Balance your study workload with a 7-day plan tailored to your daily goal.',
+      evidence: 'Generates morning/evening tasks with persistent checkboxes.',
+      actionLabel: 'View AI Planner',
+      actionType: 'planner',
+      actionRoute: '/planner',
+      isPersonalized: false,
+      createdAt: DateTime.now(),
+    ),
+  );
 
   return recommendations;
 });
@@ -184,10 +239,18 @@ class RecommendationsScreen extends ConsumerWidget {
                               decoration: BoxDecoration(
                                 color: rec.isPersonalized
                                     ? AppColors.primary.withValues(alpha: 0.15)
-                                    : (isDark ? AppColors.darkSurface : AppColors.lightBackground),
+                                    : (isDark
+                                          ? AppColors.darkSurface
+                                          : AppColors.lightBackground),
                                 borderRadius: BorderRadius.circular(10),
                               ),
-                              child: Icon(getIcon(), color: rec.isPersonalized ? AppColors.primary : AppColors.accentAmber, size: 18),
+                              child: Icon(
+                                getIcon(),
+                                color: rec.isPersonalized
+                                    ? AppColors.primary
+                                    : AppColors.accentAmber,
+                                size: 18,
+                              ),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
@@ -197,28 +260,56 @@ class RecommendationsScreen extends ConsumerWidget {
                                   Row(
                                     children: [
                                       Expanded(
-                                        child: Text(rec.title, style: AppTextStyles.displayBold(context, fontSize: 15)),
+                                        child: Text(
+                                          rec.title,
+                                          style: AppTextStyles.displayBold(
+                                            context,
+                                            fontSize: 15,
+                                          ),
+                                        ),
                                       ),
                                       Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 3,
+                                        ),
                                         decoration: BoxDecoration(
                                           color: rec.isPersonalized
-                                              ? AppColors.accentAmber.withValues(alpha: 0.15)
-                                              : (isDark ? AppColors.darkBorder : AppColors.lightBorder),
-                                          borderRadius: BorderRadius.circular(6),
+                                              ? AppColors.accentAmber
+                                                    .withValues(alpha: 0.15)
+                                              : (isDark
+                                                    ? AppColors.darkBorder
+                                                    : AppColors.lightBorder),
+                                          borderRadius: BorderRadius.circular(
+                                            6,
+                                          ),
                                         ),
                                         child: Text(
-                                          rec.isPersonalized ? 'Personalized' : 'Suggestion',
+                                          rec.isPersonalized
+                                              ? 'Personalized'
+                                              : 'Suggestion',
                                           style: AppTextStyles.monoBold(
                                             context,
                                             fontSize: 10,
-                                            color: rec.isPersonalized ? AppColors.accentAmber : (isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary),
+                                            color: rec.isPersonalized
+                                                ? AppColors.accentAmber
+                                                : (isDark
+                                                      ? AppColors
+                                                            .darkTextSecondary
+                                                      : AppColors
+                                                            .lightTextSecondary),
                                           ),
                                         ),
                                       ),
                                     ],
                                   ),
-                                  Text(rec.subjectName, style: AppTextStyles.bodySecondary(context, fontSize: 12)),
+                                  Text(
+                                    rec.subjectName,
+                                    style: AppTextStyles.bodySecondary(
+                                      context,
+                                      fontSize: 12,
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),
@@ -227,24 +318,36 @@ class RecommendationsScreen extends ConsumerWidget {
                         const SizedBox(height: 12),
                         Text(
                           rec.reason,
-                          style: AppTextStyles.body(context, fontSize: 13).copyWith(height: 1.4),
+                          style: AppTextStyles.body(
+                            context,
+                            fontSize: 13,
+                          ).copyWith(height: 1.4),
                         ),
                         if (rec.evidence != null) ...[
                           const SizedBox(height: 8),
                           Container(
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                              color: isDark ? AppColors.darkBackground : AppColors.lightBackground,
+                              color: isDark
+                                  ? AppColors.darkBackground
+                                  : AppColors.lightBackground,
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Row(
                               children: [
-                                const Icon(LucideIcons.info, size: 14, color: AppColors.primary),
+                                const Icon(
+                                  LucideIcons.info,
+                                  size: 14,
+                                  color: AppColors.primary,
+                                ),
                                 const SizedBox(width: 6),
                                 Expanded(
                                   child: Text(
                                     'Evidence: ${rec.evidence}',
-                                    style: AppTextStyles.bodySecondary(context, fontSize: 11),
+                                    style: AppTextStyles.bodySecondary(
+                                      context,
+                                      fontSize: 11,
+                                    ),
                                   ),
                                 ),
                               ],
@@ -256,7 +359,8 @@ class RecommendationsScreen extends ConsumerWidget {
                           text: rec.actionLabel,
                           icon: LucideIcons.arrowRight,
                           onPressed: () {
-                            if (rec.actionRoute == '/practice' || rec.actionRoute == '/chat') {
+                            if (rec.actionRoute == '/practice' ||
+                                rec.actionRoute == '/chat') {
                               context.go(rec.actionRoute);
                             } else {
                               context.push(rec.actionRoute);

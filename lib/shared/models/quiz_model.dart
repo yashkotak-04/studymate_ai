@@ -43,7 +43,10 @@ class QuizQuestion {
     return QuizQuestion(
       question: (json['question'] as String? ?? '').trim(),
       options: parsedOptions,
-      correctIndex: parsedCorrect.clamp(0, parsedOptions.isNotEmpty ? parsedOptions.length - 1 : 3),
+      correctIndex: parsedCorrect.clamp(
+        0,
+        parsedOptions.isNotEmpty ? parsedOptions.length - 1 : 3,
+      ),
       explanation: (json['explanation'] as String? ?? '').trim(),
       selectedIndex: json['selectedIndex'] as int?,
     );
@@ -114,7 +117,8 @@ class QuizSession {
     return mins < 1 ? 1 : mins.clamp(1, 180);
   }
 
-  double get accuracy => totalQuestions > 0 ? (score / totalQuestions) * 100.0 : 0.0;
+  double get accuracy =>
+      totalQuestions > 0 ? (score / totalQuestions) * 100.0 : 0.0;
 
   factory QuizSession.fromJson(Map<String, dynamic> json, String documentId) {
     DateTime parseDate(dynamic val) {
@@ -125,13 +129,15 @@ class QuizSession {
     }
 
     final rawQuestions = json['questions'] as List<dynamic>?;
-    final parsedQuestions = rawQuestions
+    final parsedQuestions =
+        rawQuestions
             ?.map((q) => QuizQuestion.fromJson(q as Map<String, dynamic>))
             .toList() ??
         [];
 
     final rawAnswers = json['userAnswers'] as List<dynamic>?;
-    final parsedAnswers = rawAnswers?.map((e) => (e as num).toInt()).toList() ?? [];
+    final parsedAnswers =
+        rawAnswers?.map((e) => (e as num).toInt()).toList() ?? [];
 
     return QuizSession(
       id: documentId,
@@ -207,7 +213,8 @@ class MockTestConfig {
   static const int defaultQuestionCount = 10;
   static const int minutesPerQuestion = 2; // 2 minutes per question
 
-  static int getDurationMinutes(int questionCount) => (questionCount * minutesPerQuestion).clamp(5, 60);
-  static int getDurationSeconds(int questionCount) => getDurationMinutes(questionCount) * 60;
+  static int getDurationMinutes(int questionCount) =>
+      (questionCount * minutesPerQuestion).clamp(5, 60);
+  static int getDurationSeconds(int questionCount) =>
+      getDurationMinutes(questionCount) * 60;
 }
-

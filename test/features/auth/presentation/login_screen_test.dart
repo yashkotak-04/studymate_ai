@@ -5,7 +5,9 @@ import 'package:studymate_ai/app/theme/app_theme.dart';
 import 'package:studymate_ai/features/auth/presentation/login_screen.dart';
 
 void main() {
-  testWidgets('LoginScreen renders email, password fields and sign in button', (tester) async {
+  testWidgets('LoginScreen renders email, password fields and sign in button', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       ProviderScope(
         child: MaterialApp(

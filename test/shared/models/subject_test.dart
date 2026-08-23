@@ -48,9 +48,12 @@ void main() {
       expect(subject, isNull);
     });
 
-    test('AppSubjects.getByIdOrDefault returns fallback or default if not found', () {
-      final subject = AppSubjects.getByIdOrDefault('non_existent');
-      expect(subject.id, 'os');
-    });
+    test(
+      'AppSubjects.getByIdOrDefault returns fallback or default if not found',
+      () {
+        final subject = AppSubjects.getByIdOrDefault('non_existent');
+        expect(subject.id, 'os');
+      },
+    );
   });
 }

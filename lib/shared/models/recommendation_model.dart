@@ -35,7 +35,10 @@ class Recommendation {
     required this.createdAt,
   });
 
-  factory Recommendation.fromJson(Map<String, dynamic> json, String documentId) {
+  factory Recommendation.fromJson(
+    Map<String, dynamic> json,
+    String documentId,
+  ) {
     DateTime parseDate(dynamic val) {
       if (val is Timestamp) return val.toDate();
       if (val is String) return DateTime.tryParse(val) ?? DateTime.now();
@@ -50,7 +53,9 @@ class Recommendation {
       subjectName: json['subjectName'] as String? ?? 'Operating Systems',
       topic: json['topic'] as String? ?? 'Concept Mastery',
       title: json['title'] as String? ?? 'Focus Practice Recommended',
-      reason: json['reason'] as String? ?? 'Based on recent performance and study pace.',
+      reason:
+          json['reason'] as String? ??
+          'Based on recent performance and study pace.',
       evidence: json['evidence'] as String?,
       actionLabel: json['actionLabel'] as String? ?? 'Start Practice',
       actionType: json['actionType'] as String? ?? 'practice',

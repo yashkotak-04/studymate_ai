@@ -20,7 +20,7 @@ service firebase.storage {
     }
 
     match /users/{userId}/{allPaths=**} {
-      allow read: if isAuthenticated() && request.auth.uid == userId;
+      allow read, delete: if isAuthenticated() && request.auth.uid == userId;
       allow write: if isAuthenticated() && request.auth.uid == userId && isValidSize() && isAllowedContentType();
     }
   }

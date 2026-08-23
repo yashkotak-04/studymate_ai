@@ -36,13 +36,19 @@ class CustomButton extends StatelessWidget {
         textColor = Colors.white;
         break;
       case ButtonVariant.secondary:
-        backgroundColor = isDark ? AppColors.primary.withOpacity(0.2) : AppColors.primaryLight;
+        backgroundColor = isDark
+            ? AppColors.primary.withOpacity(0.2)
+            : AppColors.primaryLight;
         textColor = AppColors.primary;
         break;
       case ButtonVariant.ghost:
         backgroundColor = Colors.transparent;
-        textColor = isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary;
-        borderSide = BorderSide(color: isDark ? AppColors.darkBorder : AppColors.lightBorder);
+        textColor = isDark
+            ? AppColors.darkTextPrimary
+            : AppColors.lightTextPrimary;
+        borderSide = BorderSide(
+          color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+        );
         break;
       case ButtonVariant.amber:
         backgroundColor = AppColors.accentAmber;
@@ -70,7 +76,12 @@ class CustomButton extends StatelessWidget {
 
     final textWidget = Text(
       text,
-      style: AppTextStyles.body(context, fontSize: isSmall ? 13 : 15, fontWeight: FontWeight.w600, color: textColor),
+      style: AppTextStyles.body(
+        context,
+        fontSize: isSmall ? 13 : 15,
+        fontWeight: FontWeight.w600,
+        color: textColor,
+      ),
     );
 
     if (icon != null) {

@@ -23,7 +23,9 @@ class ProgressRing extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
-    final defaultTrackColor = isDark ? AppColors.darkBorder : AppColors.lightBorder;
+    final defaultTrackColor = isDark
+        ? AppColors.darkBorder
+        : AppColors.lightBorder;
 
     return SizedBox(
       width: size,
@@ -90,8 +92,8 @@ class _RingPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _RingPainter oldDelegate) {
     return oldDelegate.progress != progress ||
-           oldDelegate.color != color ||
-           oldDelegate.trackColor != trackColor ||
-           oldDelegate.strokeWidth != strokeWidth;
+        oldDelegate.color != color ||
+        oldDelegate.trackColor != trackColor ||
+        oldDelegate.strokeWidth != strokeWidth;
   }
 }

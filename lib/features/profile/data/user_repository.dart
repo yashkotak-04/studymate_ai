@@ -1,8 +1,11 @@
+import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import '../../../shared/models/user_profile.dart';
 import '../../auth/data/auth_repository.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 final userRepositoryProvider = Provider<UserRepository>((ref) {
   return UserRepository(FirebaseFirestore.instance);
@@ -19,10 +22,11 @@ final currentUserProfileProvider = StreamProvider<UserProfile?>((ref) {
 
 class UserRepository {
   final FirebaseFirestore _firestore;
+  late final CollectionReference<Map<String, dynamic>> _users;
 
-  UserRepository(this._firestore);
-
-  CollectionReference<Map<String, dynamic>> get _users => _firestore.collection('users');
+  UserRepository(this._firestore) {
+    _users = _firestore.collection('users');
+  }
 
   Stream<UserProfile?> streamUserProfile(String uid) {
     return _users.doc(uid).snapshots().map((snapshot) {
@@ -48,7 +52,8 @@ class UserRepository {
       final profile = UserProfile(
         uid: user.uid,
         email: user.email,
-        displayName: user.displayName ?? (user.email?.split('@').first ?? 'Student'),
+        displayName:
+            user.displayName ?? (user.email?.split('@').first ?? 'Student'),
         createdAt: DateTime.now(),
       );
       await docRef.set(profile.toJson(), SetOptions(merge: true));
@@ -59,7 +64,8 @@ class UserRepository {
     await _users.doc(profile.uid).update(profile.toJson());
   }
 
-  Future<void> updateOnboarding(String uid, {
+  Future<void> updateOnboarding(
+    String uid, {
     required String displayName,
     required String academicProgram,
     required String targetExam,
@@ -80,30 +86,27 @@ class UserRepository {
   }
 
   Future<void> updatePreferredAiMode(String uid, String mode) async {
-    await _users.doc(uid).update({
-      'preferredAiMode': mode,
-    });
+    await _users.doc(uid).update({'preferredAiMode': mode});
   }
 
   Future<void> updateDailyGoal(String uid, int minutes) async {
-    await _users.doc(uid).update({
-      'dailyStudyGoalMinutes': minutes,
-    });
+    await _users.doc(uid).update({'dailyStudyGoalMinutes': minutes});
   }
 
   Future<void> enrollSubject(String uid, String subjectId) async {
     await _users.doc(uid).update({
-      'enrolledSubjectIds': FieldValue.arrayUnion([subjectId])
+      'enrolledSubjectIds': FieldValue.arrayUnion([subjectId]),
     });
   }
 
   Future<void> unenrollSubject(String uid, String subjectId) async {
     await _users.doc(uid).update({
-      'enrolledSubjectIds': FieldValue.arrayRemove([subjectId])
+      'enrolledSubjectIds': FieldValue.arrayRemove([subjectId]),
     });
   }
 
-  /// Permanently purges all user data across all subcollections and the user profile document.
+  /// Permanently purges all user data across all subcollections, user storage files,
+  /// and the user profile document.
   Future<void> deleteEntireUserData(String uid) async {
     final userRef = _users.doc(uid);
 
@@ -119,16 +122,29 @@ class UserRepository {
       'settings',
     ];
 
+    // 1. Purge all standard subcollections
     for (final col in subcollections) {
       try {
         final snap = await userRef.collection(col).get();
         for (final doc in snap.docs) {
           await doc.reference.delete();
         }
-      } catch (_) {}
+      } catch (e, stack) {
+        debugPrint('Error purging subcollection $col for $uid: $e');
+        try {
+          if (!kIsWeb) {
+            FirebaseCrashlytics.instance.recordError(
+              e,
+              stack,
+              reason: 'Purge Subcollection Error: $col',
+              fatal: false,
+            );
+          }
+        } catch (_) {}
+      }
     }
 
-    // Delete chat threads and their nested messages
+    // 2. Delete nested chat threads and messages
     try {
       final threads = await userRef.collection('chatThreads').get();
       for (final t in threads.docs) {
@@ -138,9 +154,38 @@ class UserRepository {
         }
         await t.reference.delete();
       }
-    } catch (_) {}
+    } catch (e, stack) {
+      debugPrint('Error purging chat threads for $uid: $e');
+      try {
+        if (!kIsWeb) {
+          FirebaseCrashlytics.instance.recordError(
+            e,
+            stack,
+            reason: 'Purge ChatThreads Error',
+            fatal: false,
+          );
+        }
+      } catch (_) {}
+    }
 
-    // Delete user profile document
+    // 3. Purge user-owned Storage objects under users/{uid}
+    try {
+      final storageRef = FirebaseStorage.instance.ref('users/$uid');
+      final listResult = await storageRef.listAll();
+      for (final item in listResult.items) {
+        await item.delete();
+      }
+      for (final prefix in listResult.prefixes) {
+        final subList = await prefix.listAll();
+        for (final subItem in subList.items) {
+          await subItem.delete();
+        }
+      }
+    } catch (e) {
+      debugPrint('Storage purge info for $uid (may have no uploads): $e');
+    }
+
+    // 4. Delete user root profile document
     await userRef.delete();
   }
 }

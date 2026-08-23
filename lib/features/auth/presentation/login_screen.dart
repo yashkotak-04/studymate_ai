@@ -63,7 +63,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     return Scaffold(
       body: SafeArea(
         child: SingleChildScrollView(
@@ -77,7 +77,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   width: 68,
                   height: 68,
                   decoration: BoxDecoration(
-                    color: isDark ? AppColors.primary.withOpacity(0.2) : AppColors.primaryLight,
+                    color: isDark
+                        ? AppColors.primary.withOpacity(0.2)
+                        : AppColors.primaryLight,
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
@@ -112,12 +114,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                   child: Row(
                     children: [
-                      const Icon(LucideIcons.alertCircle, size: 18, color: AppColors.error),
+                      const Icon(
+                        LucideIcons.alertCircle,
+                        size: 18,
+                        color: AppColors.error,
+                      ),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
                           _errorMessage!,
-                          style: AppTextStyles.body(context, fontSize: 13, color: AppColors.error),
+                          style: AppTextStyles.body(
+                            context,
+                            fontSize: 13,
+                            color: AppColors.error,
+                          ),
                         ),
                       ),
                     ],
@@ -131,14 +141,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   prefixIcon: const Icon(LucideIcons.mail, size: 19),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                    borderSide: BorderSide(
+                      color: isDark
+                          ? AppColors.darkBorder
+                          : AppColors.lightBorder,
+                    ),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                    borderSide: BorderSide(
+                      color: isDark
+                          ? AppColors.darkBorder
+                          : AppColors.lightBorder,
+                    ),
                   ),
                   filled: true,
-                  fillColor: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+                  fillColor: isDark
+                      ? AppColors.darkSurface
+                      : AppColors.lightSurface,
                 ),
                 keyboardType: TextInputType.emailAddress,
                 style: AppTextStyles.body(context),
@@ -155,18 +175,29 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       _obscurePassword ? LucideIcons.eyeOff : LucideIcons.eye,
                       size: 18,
                     ),
-                    onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                    onPressed: () =>
+                        setState(() => _obscurePassword = !_obscurePassword),
                   ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                    borderSide: BorderSide(
+                      color: isDark
+                          ? AppColors.darkBorder
+                          : AppColors.lightBorder,
+                    ),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                    borderSide: BorderSide(
+                      color: isDark
+                          ? AppColors.darkBorder
+                          : AppColors.lightBorder,
+                    ),
                   ),
                   filled: true,
-                  fillColor: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+                  fillColor: isDark
+                      ? AppColors.darkSurface
+                      : AppColors.lightSurface,
                 ),
                 obscureText: _obscurePassword,
                 style: AppTextStyles.body(context),
@@ -179,7 +210,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   onPressed: () => context.push('/forgot-password'),
                   child: Text(
                     'Forgot Password?',
-                    style: AppTextStyles.body(context, fontSize: 13, color: AppColors.primary, fontWeight: FontWeight.w600),
+                    style: AppTextStyles.body(
+                      context,
+                      fontSize: 13,
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ),
@@ -203,7 +239,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     onTap: () => context.push('/signup'),
                     child: Text(
                       'Sign up',
-                      style: AppTextStyles.body(context, color: AppColors.primary, fontWeight: FontWeight.w700),
+                      style: AppTextStyles.body(
+                        context,
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                 ],

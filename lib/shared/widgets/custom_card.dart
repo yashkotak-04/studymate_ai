@@ -24,11 +24,15 @@ class CustomCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: backgroundColor ?? Theme.of(context).cardTheme.color,
         borderRadius: BorderRadius.circular(16),
-        border: customBorder != null 
-          ? Border.fromBorderSide(customBorder!)
-          : Border.fromBorderSide(Theme.of(context).cardTheme.shape is RoundedRectangleBorder 
-              ? (Theme.of(context).cardTheme.shape as RoundedRectangleBorder).side 
-              : BorderSide.none),
+        border: customBorder != null
+            ? Border.fromBorderSide(customBorder!)
+            : Border.fromBorderSide(
+                Theme.of(context).cardTheme.shape is RoundedRectangleBorder
+                    ? (Theme.of(context).cardTheme.shape
+                              as RoundedRectangleBorder)
+                          .side
+                    : BorderSide.none,
+              ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.04),

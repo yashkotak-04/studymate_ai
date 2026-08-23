@@ -8,6 +8,7 @@ class UserProfile {
   final bool onboardingComplete;
   final String? academicProgram;
   final String? targetExam;
+  final DateTime? examDate;
   final List<String> enrolledSubjectIds;
   final int dailyStudyGoalMinutes;
   final String preferredAiMode; // 'Beginner', 'Student', 'Exam', 'Viva'
@@ -24,6 +25,7 @@ class UserProfile {
     this.onboardingComplete = false,
     this.academicProgram,
     this.targetExam,
+    this.examDate,
     this.enrolledSubjectIds = const [],
     this.dailyStudyGoalMinutes = 30,
     this.preferredAiMode = 'Student',
@@ -33,15 +35,16 @@ class UserProfile {
     this.lastActiveAt,
   });
 
-  factory UserProfile.fromJson(Map<String, dynamic> json, String documentId) {
+  factory UserProfile.fromJson(Map<String, dynamic> json, [String? documentId]) {
     return UserProfile(
-      uid: documentId,
+      uid: documentId ?? json['uid'] as String? ?? json['userId'] as String? ?? '',
       email: json['email'] as String?,
       displayName: json['displayName'] as String?,
       avatarUrl: json['avatarUrl'] as String?,
       onboardingComplete: json['onboardingComplete'] as bool? ?? false,
       academicProgram: json['academicProgram'] as String?,
       targetExam: json['targetExam'] as String?,
+      examDate: (json['examDate'] as Timestamp?)?.toDate(),
       enrolledSubjectIds: List<String>.from(json['enrolledSubjectIds'] ?? []),
       dailyStudyGoalMinutes: json['dailyStudyGoalMinutes'] as int? ?? 30,
       preferredAiMode: json['preferredAiMode'] as String? ?? 'Student',
@@ -60,13 +63,16 @@ class UserProfile {
       'onboardingComplete': onboardingComplete,
       'academicProgram': academicProgram,
       'targetExam': targetExam,
+      'examDate': examDate != null ? Timestamp.fromDate(examDate!) : null,
       'enrolledSubjectIds': enrolledSubjectIds,
       'dailyStudyGoalMinutes': dailyStudyGoalMinutes,
       'preferredAiMode': preferredAiMode,
       'currentStreak': currentStreak,
       'longestStreak': longestStreak,
       'createdAt': Timestamp.fromDate(createdAt),
-      'lastActiveAt': lastActiveAt != null ? Timestamp.fromDate(lastActiveAt!) : null,
+      'lastActiveAt': lastActiveAt != null
+          ? Timestamp.fromDate(lastActiveAt!)
+          : null,
     };
   }
 
@@ -76,6 +82,7 @@ class UserProfile {
     bool? onboardingComplete,
     String? academicProgram,
     String? targetExam,
+    DateTime? examDate,
     List<String>? enrolledSubjectIds,
     int? dailyStudyGoalMinutes,
     String? preferredAiMode,
@@ -91,8 +98,10 @@ class UserProfile {
       onboardingComplete: onboardingComplete ?? this.onboardingComplete,
       academicProgram: academicProgram ?? this.academicProgram,
       targetExam: targetExam ?? this.targetExam,
+      examDate: examDate ?? this.examDate,
       enrolledSubjectIds: enrolledSubjectIds ?? this.enrolledSubjectIds,
-      dailyStudyGoalMinutes: dailyStudyGoalMinutes ?? this.dailyStudyGoalMinutes,
+      dailyStudyGoalMinutes:
+          dailyStudyGoalMinutes ?? this.dailyStudyGoalMinutes,
       preferredAiMode: preferredAiMode ?? this.preferredAiMode,
       currentStreak: currentStreak ?? this.currentStreak,
       longestStreak: longestStreak ?? this.longestStreak,

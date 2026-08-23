@@ -27,18 +27,44 @@ class Subject {
       'id': id,
       'name': name,
       'shortName': shortName,
-      'color': '#${color.toARGB32().toRadixString(16).padLeft(8, '0').substring(2).toUpperCase()}',
+      'color':
+          '#${color.toARGB32().toRadixString(16).padLeft(8, '0').substring(2).toUpperCase()}',
     };
   }
 }
 
 class AppSubjects {
   static const List<Subject> availableSubjects = [
-    Subject(id: 'os', name: 'Operating Systems', shortName: 'OS', color: Color(0xFFFF6B6B)),
-    Subject(id: 'py', name: 'Python Programming', shortName: 'Python', color: Color(0xFF2DD4BF)),
-    Subject(id: 'db', name: 'DBMS', shortName: 'DBMS', color: Color(0xFFFFB443)),
-    Subject(id: 'net', name: 'Computer Networks', shortName: 'Networks', color: Color(0xFF5B8DEF)),
-    Subject(id: 'asp', name: 'ASP.NET', shortName: 'ASP.NET', color: Color(0xFFF783AC)),
+    Subject(
+      id: 'os',
+      name: 'Operating Systems',
+      shortName: 'OS',
+      color: Color(0xFFFF6B6B),
+    ),
+    Subject(
+      id: 'py',
+      name: 'Python Programming',
+      shortName: 'Python',
+      color: Color(0xFF2DD4BF),
+    ),
+    Subject(
+      id: 'db',
+      name: 'DBMS',
+      shortName: 'DBMS',
+      color: Color(0xFFFFB443),
+    ),
+    Subject(
+      id: 'net',
+      name: 'Computer Networks',
+      shortName: 'Networks',
+      color: Color(0xFF5B8DEF),
+    ),
+    Subject(
+      id: 'asp',
+      name: 'ASP.NET',
+      shortName: 'ASP.NET',
+      color: Color(0xFFF783AC),
+    ),
   ];
 
   static Subject? getById(String id) {

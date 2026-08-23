@@ -11,17 +11,21 @@ final chatRepositoryProvider = Provider<ChatRepository>((ref) {
 final userChatThreadsProvider = StreamProvider<List<ChatThread>>((ref) {
   final user = ref.watch(authStateProvider).value;
   if (user == null) return Stream.value([]);
-  
+
   return ref.watch(chatRepositoryProvider).getUserThreads(user.uid);
 });
 
 // Stream provider for messages in a specific thread
-final threadMessagesProvider = StreamProvider.family<List<ChatMessage>, String>((ref, threadId) {
-  final user = ref.watch(authStateProvider).value;
-  if (user == null || threadId.isEmpty) return Stream.value([]);
-  
-  return ref.watch(chatRepositoryProvider).getThreadMessages(user.uid, threadId);
-});
+final threadMessagesProvider = StreamProvider.family<List<ChatMessage>, String>(
+  (ref, threadId) {
+    final user = ref.watch(authStateProvider).value;
+    if (user == null || threadId.isEmpty) return Stream.value([]);
+
+    return ref
+        .watch(chatRepositoryProvider)
+        .getThreadMessages(user.uid, threadId);
+  },
+);
 
 class ChatRepository {
   final FirebaseFirestore _firestore;
@@ -36,12 +40,18 @@ class ChatRepository {
         .orderBy('updatedAt', descending: true)
         .limit(limit)
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => ChatThread.fromJson(doc.data(), doc.id))
-            .toList());
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => ChatThread.fromJson(doc.data(), doc.id))
+              .toList(),
+        );
   }
 
-  Stream<List<ChatMessage>> getThreadMessages(String userId, String threadId, {int limit = 100}) {
+  Stream<List<ChatMessage>> getThreadMessages(
+    String userId,
+    String threadId, {
+    int limit = 100,
+  }) {
     return _firestore
         .collection('users')
         .doc(userId)
@@ -51,9 +61,11 @@ class ChatRepository {
         .orderBy('timestamp', descending: false)
         .limit(limit)
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => ChatMessage.fromJson(doc.data(), doc.id))
-            .toList());
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => ChatMessage.fromJson(doc.data(), doc.id))
+              .toList(),
+        );
   }
 
   Future<String> createThread(
@@ -67,7 +79,7 @@ class ChatRepository {
         .doc(userId)
         .collection('chatThreads')
         .doc();
-        
+
     final thread = ChatThread(
       id: docRef.id,
       userId: userId,
@@ -77,44 +89,53 @@ class ChatRepository {
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
     );
-    
+
     await docRef.set(thread.toJson());
     return docRef.id;
   }
 
-  Future<void> addMessage(String userId, String threadId, ChatMessage message) async {
+  Future<void> addMessage(
+    String userId,
+    String threadId,
+    ChatMessage message,
+  ) async {
     final threadRef = _firestore
         .collection('users')
         .doc(userId)
         .collection('chatThreads')
         .doc(threadId);
-        
+
     final batch = _firestore.batch();
-    
+
     // Add message
-    final messageRef = threadRef.collection('messages').doc(message.id.isNotEmpty && message.id != 'temp' ? message.id : null);
+    final messageRef = threadRef
+        .collection('messages')
+        .doc(message.id.isNotEmpty && message.id != 'temp' ? message.id : null);
     batch.set(messageRef, message.toJson());
-    
+
     // Update thread timestamp and preview
-    final preview = message.text.length > 80 ? '${message.text.substring(0, 80)}...' : message.text;
+    final preview = message.text.length > 80
+        ? '${message.text.substring(0, 80)}...'
+        : message.text;
     batch.update(threadRef, {
       'updatedAt': FieldValue.serverTimestamp(),
       'lastMessagePreview': preview,
     });
-    
+
     await batch.commit();
   }
 
-  Future<void> updateThreadMode(String userId, String threadId, ExplanationMode mode) async {
+  Future<void> updateThreadMode(
+    String userId,
+    String threadId,
+    ExplanationMode mode,
+  ) async {
     await _firestore
         .collection('users')
         .doc(userId)
         .collection('chatThreads')
         .doc(threadId)
-        .update({
-      'mode': mode.id,
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
+        .update({'mode': mode.id, 'updatedAt': FieldValue.serverTimestamp()});
   }
 
   Future<void> deleteThread(String userId, String threadId) async {

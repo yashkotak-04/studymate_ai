@@ -25,7 +25,9 @@ class McqSetupScreen extends ConsumerStatefulWidget {
 
 class _McqSetupScreenState extends ConsumerState<McqSetupScreen> {
   String _selectedSubject = AppSubjects.availableSubjects.first.id;
-  final _topicController = TextEditingController(text: 'Process Scheduling & Synchronization');
+  final _topicController = TextEditingController(
+    text: 'Process Scheduling & Synchronization',
+  );
   String _difficulty = 'Medium';
   int _count = 5;
   bool _isGenerating = false;
@@ -69,16 +71,24 @@ class _McqSetupScreenState extends ConsumerState<McqSetupScreen> {
         isMockTest: _isMockTest,
         isCompleted: false,
         startTime: DateTime.now(),
-        endTime: DateTime.now().add(Duration(minutes: _isMockTest ? MockTestConfig.getDurationMinutes(_count) : 10)),
+        endTime: DateTime.now().add(
+          Duration(
+            minutes: _isMockTest
+                ? MockTestConfig.getDurationMinutes(_count)
+                : 10,
+          ),
+        ),
         questions: questions,
       );
 
       ref.read(currentQuizProvider.notifier).state = session;
-      ref.read(firebaseServiceProvider).logQuizGenerated(
-        _isMockTest ? 'Mock Test' : _selectedSubject,
-        questions.length,
-        _isMockTest,
-      );
+      ref
+          .read(firebaseServiceProvider)
+          .logQuizGenerated(
+            _isMockTest ? 'Mock Test' : _selectedSubject,
+            questions.length,
+            _isMockTest,
+          );
 
       if (mounted) {
         context.push('/quiz');
@@ -86,7 +96,11 @@ class _McqSetupScreenState extends ConsumerState<McqSetupScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to generate MCQs: ${e.toString().replaceAll('Exception:', '').trim()}')),
+          SnackBar(
+            content: Text(
+              'Failed to generate MCQs: ${e.toString().replaceAll('Exception:', '').trim()}',
+            ),
+          ),
         );
       }
     } finally {
@@ -111,12 +125,21 @@ class _McqSetupScreenState extends ConsumerState<McqSetupScreen> {
                 title: _isMockTest ? 'Mock Exam Setup' : 'Practice MCQs',
                 onBack: () => context.go('/'),
               ),
-              
+
               CustomCard(
                 padding: const EdgeInsets.all(14),
                 child: SwitchListTile(
-                  title: Text('Mock Test Mode', style: AppTextStyles.body(context, fontWeight: FontWeight.w700)),
-                  subtitle: Text('Full-length timed exam across all syllabus subjects (${MockTestConfig.getDurationMinutes(_count)} min)', style: AppTextStyles.bodySecondary(context, fontSize: 12)),
+                  title: Text(
+                    'Mock Test Mode',
+                    style: AppTextStyles.body(
+                      context,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  subtitle: Text(
+                    'Full-length timed exam across all syllabus subjects (${MockTestConfig.getDurationMinutes(_count)} min)',
+                    style: AppTextStyles.bodySecondary(context, fontSize: 12),
+                  ),
                   value: _isMockTest,
                   activeColor: AppColors.primary,
                   contentPadding: EdgeInsets.zero,
@@ -135,7 +158,13 @@ class _McqSetupScreenState extends ConsumerState<McqSetupScreen> {
               const SizedBox(height: 16),
 
               if (!_isMockTest) ...[
-                Text('Subject', style: AppTextStyles.body(context, fontWeight: FontWeight.w700)),
+                Text(
+                  'Subject',
+                  style: AppTextStyles.body(
+                    context,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
                 const SizedBox(height: 8),
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
@@ -156,23 +185,43 @@ class _McqSetupScreenState extends ConsumerState<McqSetupScreen> {
                 ),
                 const SizedBox(height: 18),
 
-                Text('Specific Topic / Chapter', style: AppTextStyles.body(context, fontWeight: FontWeight.w700)),
+                Text(
+                  'Specific Topic / Chapter',
+                  style: AppTextStyles.body(
+                    context,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
                 const SizedBox(height: 8),
                 TextField(
                   controller: _topicController,
                   decoration: InputDecoration(
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                      borderSide: BorderSide(
+                        color: isDark
+                            ? AppColors.darkBorder
+                            : AppColors.lightBorder,
+                      ),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                      borderSide: BorderSide(
+                        color: isDark
+                            ? AppColors.darkBorder
+                            : AppColors.lightBorder,
+                      ),
                     ),
                     filled: true,
-                    fillColor: isDark ? AppColors.darkSurface : AppColors.lightSurface,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                    hintText: 'e.g. Memory Management, SQL Joins, TCP Handshake',
+                    fillColor: isDark
+                        ? AppColors.darkSurface
+                        : AppColors.lightSurface,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
+                    hintText:
+                        'e.g. Memory Management, SQL Joins, TCP Handshake',
                   ),
                   style: AppTextStyles.body(context),
                 ),
@@ -181,14 +230,30 @@ class _McqSetupScreenState extends ConsumerState<McqSetupScreen> {
                 CustomCard(
                   child: Row(
                     children: [
-                      const Icon(LucideIcons.timer, color: AppColors.accentAmber, size: 24),
+                      const Icon(
+                        LucideIcons.timer,
+                        color: AppColors.accentAmber,
+                        size: 24,
+                      ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Mock Exam Timer: ${MockTestConfig.getDurationMinutes(_count)} Minutes', style: AppTextStyles.body(context, fontWeight: FontWeight.w700)),
-                            Text('Test will automatically submit when the countdown ends (${MockTestConfig.minutesPerQuestion}m/question).', style: AppTextStyles.bodySecondary(context, fontSize: 12)),
+                            Text(
+                              'Mock Exam Timer: ${MockTestConfig.getDurationMinutes(_count)} Minutes',
+                              style: AppTextStyles.body(
+                                context,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            Text(
+                              'Test will automatically submit when the countdown ends (${MockTestConfig.minutesPerQuestion}m/question).',
+                              style: AppTextStyles.bodySecondary(
+                                context,
+                                fontSize: 12,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -198,12 +263,21 @@ class _McqSetupScreenState extends ConsumerState<McqSetupScreen> {
                 const SizedBox(height: 18),
               ],
 
-              Text('Difficulty Level', style: AppTextStyles.body(context, fontWeight: FontWeight.w700)),
+              Text(
+                'Difficulty Level',
+                style: AppTextStyles.body(context, fontWeight: FontWeight.w700),
+              ),
               const SizedBox(height: 8),
               Container(
                 decoration: BoxDecoration(
-                  color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
-                  border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                  color: isDark
+                      ? AppColors.darkSurface
+                      : AppColors.lightSurface,
+                  border: Border.all(
+                    color: isDark
+                        ? AppColors.darkBorder
+                        : AppColors.lightBorder,
+                  ),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 padding: const EdgeInsets.all(4),
@@ -217,7 +291,9 @@ class _McqSetupScreenState extends ConsumerState<McqSetupScreen> {
                         child: Container(
                           padding: const EdgeInsets.symmetric(vertical: 10),
                           decoration: BoxDecoration(
-                            color: isActive ? AppColors.primary : Colors.transparent,
+                            color: isActive
+                                ? AppColors.primary
+                                : Colors.transparent,
                             borderRadius: BorderRadius.circular(8),
                           ),
                           alignment: Alignment.center,
@@ -226,7 +302,11 @@ class _McqSetupScreenState extends ConsumerState<McqSetupScreen> {
                             style: AppTextStyles.body(
                               context,
                               fontWeight: FontWeight.w700,
-                              color: isActive ? Colors.white : (isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary),
+                              color: isActive
+                                  ? Colors.white
+                                  : (isDark
+                                        ? AppColors.darkTextSecondary
+                                        : AppColors.lightTextSecondary),
                             ),
                           ),
                         ),
@@ -237,33 +317,62 @@ class _McqSetupScreenState extends ConsumerState<McqSetupScreen> {
               ),
               const SizedBox(height: 18),
 
-              Text('Number of Questions', style: AppTextStyles.body(context, fontWeight: FontWeight.w700)),
+              Text(
+                'Number of Questions',
+                style: AppTextStyles.body(context, fontWeight: FontWeight.w700),
+              ),
               const SizedBox(height: 8),
               CustomCard(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     IconButton(
-                      onPressed: () => setState(() => _count = (_count > 3) ? _count - (_isMockTest ? 5 : 1) : 3),
+                      onPressed: () => setState(
+                        () => _count = (_count > 3)
+                            ? _count - (_isMockTest ? 5 : 1)
+                            : 3,
+                      ),
                       icon: const Icon(LucideIcons.minus, size: 16),
                       style: IconButton.styleFrom(
-                        backgroundColor: isDark ? AppColors.darkBackground : AppColors.lightBackground,
+                        backgroundColor: isDark
+                            ? AppColors.darkBackground
+                            : AppColors.lightBackground,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
-                          side: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                          side: BorderSide(
+                            color: isDark
+                                ? AppColors.darkBorder
+                                : AppColors.lightBorder,
+                          ),
                         ),
                       ),
                     ),
-                    Text('$_count Questions', style: AppTextStyles.monoBold(context, fontSize: 18)),
+                    Text(
+                      '$_count Questions',
+                      style: AppTextStyles.monoBold(context, fontSize: 18),
+                    ),
                     IconButton(
-                      onPressed: () => setState(() => _count = (_count < 20) ? _count + (_isMockTest ? 5 : 1) : 20),
+                      onPressed: () => setState(
+                        () => _count = (_count < 20)
+                            ? _count + (_isMockTest ? 5 : 1)
+                            : 20,
+                      ),
                       icon: const Icon(LucideIcons.plus, size: 16),
                       style: IconButton.styleFrom(
-                        backgroundColor: isDark ? AppColors.darkBackground : AppColors.lightBackground,
+                        backgroundColor: isDark
+                            ? AppColors.darkBackground
+                            : AppColors.lightBackground,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
-                          side: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                          side: BorderSide(
+                            color: isDark
+                                ? AppColors.darkBorder
+                                : AppColors.lightBorder,
+                          ),
                         ),
                       ),
                     ),
@@ -273,7 +382,9 @@ class _McqSetupScreenState extends ConsumerState<McqSetupScreen> {
               const SizedBox(height: 28),
 
               CustomButton(
-                text: _isGenerating ? 'Generating Question Paper...' : (_isMockTest ? 'Start Mock Exam' : 'Generate MCQs'),
+                text: _isGenerating
+                    ? 'Generating Question Paper...'
+                    : (_isMockTest ? 'Start Mock Exam' : 'Generate MCQs'),
                 icon: LucideIcons.sparkles,
                 isFullWidth: true,
                 onPressed: _isGenerating ? null : _generateMcqs,

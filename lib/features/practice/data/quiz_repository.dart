@@ -15,7 +15,7 @@ final quizRepositoryProvider = Provider<QuizRepository>((ref) {
 final userQuizHistoryProvider = StreamProvider<List<QuizSession>>((ref) {
   final user = ref.watch(authStateProvider).value;
   if (user == null) return Stream.value([]);
-  
+
   return ref.watch(quizRepositoryProvider).getUserQuizHistory(user.uid);
 });
 
@@ -25,7 +25,10 @@ class QuizRepository {
 
   QuizRepository(this._firestore, this._progressRepository);
 
-  Stream<List<QuizSession>> getUserQuizHistory(String userId, {int limit = 50}) {
+  Stream<List<QuizSession>> getUserQuizHistory(
+    String userId, {
+    int limit = 50,
+  }) {
     return _firestore
         .collection('users')
         .doc(userId)
@@ -33,9 +36,11 @@ class QuizRepository {
         .orderBy('endTime', descending: true)
         .limit(limit)
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => QuizSession.fromJson(doc.data(), doc.id))
-            .toList());
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => QuizSession.fromJson(doc.data(), doc.id))
+              .toList(),
+        );
   }
 
   Future<QuizSession?> getQuizSession(String userId, String quizId) async {

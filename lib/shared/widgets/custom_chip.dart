@@ -19,14 +19,16 @@ class CustomChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     final defaultActiveColor = activeColor ?? AppColors.primary;
-    final borderColor = isActive ? defaultActiveColor : (isDark ? AppColors.darkBorder : AppColors.lightBorder);
-    final backgroundColor = isActive 
-        ? defaultActiveColor.withOpacity(0.15) 
+    final borderColor = isActive
+        ? defaultActiveColor
+        : (isDark ? AppColors.darkBorder : AppColors.lightBorder);
+    final backgroundColor = isActive
+        ? defaultActiveColor.withOpacity(0.15)
         : (isDark ? AppColors.darkSurface : AppColors.lightSurface);
-    final textColor = isActive 
-        ? defaultActiveColor 
+    final textColor = isActive
+        ? defaultActiveColor
         : (isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary);
 
     return Material(
@@ -43,9 +45,9 @@ class CustomChip extends StatelessWidget {
           child: Text(
             label,
             style: AppTextStyles.body(
-              context, 
-              fontSize: 13, 
-              fontWeight: FontWeight.w600, 
+              context,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
               color: textColor,
             ),
           ),

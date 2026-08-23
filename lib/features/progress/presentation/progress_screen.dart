@@ -32,6 +32,7 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen> {
     final subjectProgressAsync = ref.watch(subjectProgressProvider);
     final quizHistoryAsync = ref.watch(userQuizHistoryProvider);
     final allTimeAggAsync = ref.watch(allTimeAggregatesProvider);
+    final allDailyStatsAsync = ref.watch(allDailyStatsProvider);
 
     final quizzes = quizHistoryAsync.value ?? [];
     final now = DateTime.now();
@@ -60,35 +61,108 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen> {
       totalCorrect += q.score;
     }
 
-    double avgAccuracy = totalQuestions > 0 ? (totalCorrect / totalQuestions) * 100.0 : 0.0;
+    double avgAccuracy = totalQuestions > 0
+        ? (totalCorrect / totalQuestions) * 100.0
+        : 0.0;
 
     if (_selectedFilter == TimeFilter.allTime) {
       final aggData = allTimeAggAsync.value ?? {};
       if (aggData.isNotEmpty && (aggData['totalQuizzes'] as num? ?? 0) > 0) {
-        totalQuizzes = (aggData['totalQuizzes'] as num?)?.toInt() ?? totalQuizzes;
+        totalQuizzes =
+            (aggData['totalQuizzes'] as num?)?.toInt() ?? totalQuizzes;
         avgAccuracy = (aggData['accuracy'] as num?)?.toDouble() ?? avgAccuracy;
       }
     }
 
-    // Find Strongest and Weakest Subjects
-    final subjectProgressList = subjectProgressAsync.value ?? [];
+    // Period-specific Study Time calculation
+    final allDailyStats = allDailyStatsAsync.value ?? [];
+    int studyTimeMinutes = 0;
+    if (_selectedFilter == TimeFilter.week) {
+      for (final ds in allDailyStats) {
+        final dateStr = ds['date'] as String?;
+        if (dateStr != null) {
+          try {
+            final dt = DateTime.parse(dateStr);
+            if (now.difference(dt).inDays <= 7) {
+              studyTimeMinutes += (ds['minutesStudied'] as num?)?.toInt() ?? 0;
+            }
+          } catch (_) {}
+        }
+      }
+    } else if (_selectedFilter == TimeFilter.month) {
+      for (final ds in allDailyStats) {
+        final dateStr = ds['date'] as String?;
+        if (dateStr != null) {
+          try {
+            final dt = DateTime.parse(dateStr);
+            if (now.difference(dt).inDays <= 30) {
+              studyTimeMinutes += (ds['minutesStudied'] as num?)?.toInt() ?? 0;
+            }
+          } catch (_) {}
+        }
+      }
+    } else {
+      final aggData = allTimeAggAsync.value ?? {};
+      studyTimeMinutes = (aggData['totalMinutesStudied'] as num?)?.toInt() ?? 0;
+      if (studyTimeMinutes == 0) {
+        for (final ds in allDailyStats) {
+          studyTimeMinutes += (ds['minutesStudied'] as num?)?.toInt() ?? 0;
+        }
+      }
+    }
+
+    // Find Strongest and Weakest Subjects for selected period
     String strongestSubjectName = 'N/A';
     String weakestSubjectName = 'N/A';
-    double highestAcc = -1.0;
-    double lowestAcc = 101.0;
 
-    for (final sp in subjectProgressList) {
-      final acc = (sp['accuracy'] as num?)?.toDouble() ?? 0.0;
-      final subId = sp['id'] as String? ?? '';
-      final subObj = AppSubjects.getById(subId);
-      if (subObj != null) {
-        if (acc > highestAcc) {
-          highestAcc = acc;
-          strongestSubjectName = subObj.name;
+    if (_selectedFilter == TimeFilter.allTime) {
+      final subjectProgressList = subjectProgressAsync.value ?? [];
+      double highestAcc = -1.0;
+      double lowestAcc = 101.0;
+      for (final sp in subjectProgressList) {
+        final acc = (sp['accuracy'] as num?)?.toDouble() ?? 0.0;
+        final subId = sp['id'] as String? ?? '';
+        final subObj = AppSubjects.getById(subId);
+        if (subObj != null && (sp['totalQuestions'] as num? ?? 0) > 0) {
+          if (acc > highestAcc) {
+            highestAcc = acc;
+            strongestSubjectName = subObj.name;
+          }
+          if (acc < lowestAcc) {
+            lowestAcc = acc;
+            weakestSubjectName = subObj.name;
+          }
         }
-        if (acc < lowestAcc) {
-          lowestAcc = acc;
-          weakestSubjectName = subObj.name;
+      }
+    } else {
+      final Map<String, int> subCorrect = {};
+      final Map<String, int> subTotal = {};
+      for (final q in filteredQuizzes) {
+        if (q.subjectId != 'summary_quiz' && q.subjectId.isNotEmpty) {
+          subCorrect[q.subjectId] = (subCorrect[q.subjectId] ?? 0) + q.score;
+          subTotal[q.subjectId] =
+              (subTotal[q.subjectId] ?? 0) + q.totalQuestions;
+        }
+      }
+
+      double highestAcc = -1.0;
+      double lowestAcc = 101.0;
+      for (final entry in subTotal.entries) {
+        final totalQ = entry.value;
+        if (totalQ > 0) {
+          final correct = subCorrect[entry.key] ?? 0;
+          final acc = (correct / totalQ) * 100.0;
+          final subObj = AppSubjects.getById(entry.key);
+          if (subObj != null) {
+            if (acc > highestAcc) {
+              highestAcc = acc;
+              strongestSubjectName = subObj.name;
+            }
+            if (acc < lowestAcc) {
+              lowestAcc = acc;
+              weakestSubjectName = subObj.name;
+            }
+          }
         }
       }
     }
@@ -101,12 +175,18 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const ScreenHeader(title: 'Analytics & Progress'),
-              
+
               // Time Filter Toggle (Week / Month / All Time)
               Container(
                 decoration: BoxDecoration(
-                  color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
-                  border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                  color: isDark
+                      ? AppColors.darkSurface
+                      : AppColors.lightSurface,
+                  border: Border.all(
+                    color: isDark
+                        ? AppColors.darkBorder
+                        : AppColors.lightBorder,
+                  ),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 padding: const EdgeInsets.all(4),
@@ -130,13 +210,29 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen> {
                         children: [
                           Row(
                             children: [
-                              const Icon(LucideIcons.listChecks, size: 16, color: AppColors.primary),
+                              const Icon(
+                                LucideIcons.listChecks,
+                                size: 16,
+                                color: AppColors.primary,
+                              ),
                               const SizedBox(width: 6),
-                              Text('Total Quizzes', style: AppTextStyles.bodySecondary(context, fontSize: 11)),
+                              Text(
+                                'Total Quizzes',
+                                style: AppTextStyles.bodySecondary(
+                                  context,
+                                  fontSize: 11,
+                                ),
+                              ),
                             ],
                           ),
                           const SizedBox(height: 6),
-                          Text('$totalQuizzes', style: AppTextStyles.monoBold(context, fontSize: 22)),
+                          Text(
+                            '$totalQuizzes',
+                            style: AppTextStyles.monoBold(
+                              context,
+                              fontSize: 22,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -149,13 +245,30 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen> {
                         children: [
                           Row(
                             children: [
-                              const Icon(LucideIcons.target, size: 16, color: AppColors.accentTeal),
+                              const Icon(
+                                LucideIcons.target,
+                                size: 16,
+                                color: AppColors.accentTeal,
+                              ),
                               const SizedBox(width: 6),
-                              Text('Avg Accuracy', style: AppTextStyles.bodySecondary(context, fontSize: 11)),
+                              Text(
+                                'Avg Accuracy',
+                                style: AppTextStyles.bodySecondary(
+                                  context,
+                                  fontSize: 11,
+                                ),
+                              ),
                             ],
                           ),
                           const SizedBox(height: 6),
-                          Text('${avgAccuracy.toInt()}%', style: AppTextStyles.monoBold(context, fontSize: 22, color: AppColors.accentTeal)),
+                          Text(
+                            '${avgAccuracy.toInt()}%',
+                            style: AppTextStyles.monoBold(
+                              context,
+                              fontSize: 22,
+                              color: AppColors.accentTeal,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -173,13 +286,29 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen> {
                         children: [
                           Row(
                             children: [
-                              const Icon(LucideIcons.flame, size: 16, color: AppColors.accentAmber),
+                              const Icon(
+                                LucideIcons.flame,
+                                size: 16,
+                                color: AppColors.accentAmber,
+                              ),
                               const SizedBox(width: 6),
-                              Text('Current Streak', style: AppTextStyles.bodySecondary(context, fontSize: 11)),
+                              Text(
+                                'Current Streak',
+                                style: AppTextStyles.bodySecondary(
+                                  context,
+                                  fontSize: 11,
+                                ),
+                              ),
                             ],
                           ),
                           const SizedBox(height: 6),
-                          Text('${userProfile?.currentStreak ?? 0} days', style: AppTextStyles.monoBold(context, fontSize: 20)),
+                          Text(
+                            '${userProfile?.currentStreak ?? 0} days',
+                            style: AppTextStyles.monoBold(
+                              context,
+                              fontSize: 20,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -192,16 +321,28 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen> {
                         children: [
                           Row(
                             children: [
-                              const Icon(LucideIcons.clock, size: 16, color: AppColors.primary),
+                              const Icon(
+                                LucideIcons.clock,
+                                size: 16,
+                                color: AppColors.primary,
+                              ),
                               const SizedBox(width: 6),
-                              Text('Study Time', style: AppTextStyles.bodySecondary(context, fontSize: 11)),
+                              Text(
+                                'Study Time',
+                                style: AppTextStyles.bodySecondary(
+                                  context,
+                                  fontSize: 11,
+                                ),
+                              ),
                             ],
                           ),
                           const SizedBox(height: 6),
-                          dailyStatsAsync.when(
-                            data: (ds) => Text('${ds['minutesStudied'] ?? 0} mins', style: AppTextStyles.monoBold(context, fontSize: 20)),
-                            loading: () => const Text('...', style: TextStyle(fontSize: 20)),
-                            error: (_, __) => const Text('0 mins', style: TextStyle(fontSize: 20)),
+                          Text(
+                            '$studyTimeMinutes mins',
+                            style: AppTextStyles.monoBold(
+                              context,
+                              fontSize: 20,
+                            ),
                           ),
                         ],
                       ),
@@ -219,25 +360,75 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('STRONGEST', style: AppTextStyles.body(context, fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.success)),
+                          Text(
+                            'STRONGEST',
+                            style: AppTextStyles.body(
+                              context,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.success,
+                            ),
+                          ),
                           const SizedBox(height: 4),
-                          Text(strongestSubjectName, style: AppTextStyles.body(context, fontWeight: FontWeight.w700), maxLines: 1, overflow: TextOverflow.ellipsis),
+                          Text(
+                            strongestSubjectName,
+                            style: AppTextStyles.body(
+                              context,
+                              fontWeight: FontWeight.w700,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                           if (highestAcc >= 0)
-                            Text('${highestAcc.toInt()}% accuracy', style: AppTextStyles.bodySecondary(context, fontSize: 12)),
+                            Text(
+                              '${highestAcc.toInt()}% accuracy',
+                              style: AppTextStyles.bodySecondary(
+                                context,
+                                fontSize: 12,
+                              ),
+                            ),
                         ],
                       ),
                     ),
-                    Container(width: 1, height: 40, color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                    Container(
+                      width: 1,
+                      height: 40,
+                      color: isDark
+                          ? AppColors.darkBorder
+                          : AppColors.lightBorder,
+                    ),
                     const SizedBox(width: 16),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('NEEDS FOCUS', style: AppTextStyles.body(context, fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.warning)),
+                          Text(
+                            'NEEDS FOCUS',
+                            style: AppTextStyles.body(
+                              context,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.warning,
+                            ),
+                          ),
                           const SizedBox(height: 4),
-                          Text(weakestSubjectName, style: AppTextStyles.body(context, fontWeight: FontWeight.w700), maxLines: 1, overflow: TextOverflow.ellipsis),
+                          Text(
+                            weakestSubjectName,
+                            style: AppTextStyles.body(
+                              context,
+                              fontWeight: FontWeight.w700,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                           if (lowestAcc <= 100)
-                            Text('${lowestAcc.toInt()}% accuracy', style: AppTextStyles.bodySecondary(context, fontSize: 12)),
+                            Text(
+                              '${lowestAcc.toInt()}% accuracy',
+                              style: AppTextStyles.bodySecondary(
+                                context,
+                                fontSize: 12,
+                              ),
+                            ),
                         ],
                       ),
                     ),
@@ -247,7 +438,10 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen> {
               const SizedBox(height: 20),
 
               // Score Trend Line Chart
-              Text('Score Trend Over Time', style: AppTextStyles.displayBold(context, fontSize: 16)),
+              Text(
+                'Score Trend Over Time',
+                style: AppTextStyles.displayBold(context, fontSize: 16),
+              ),
               const SizedBox(height: 10),
 
               if (chronologicalQuizzes.isEmpty)
@@ -255,7 +449,9 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen> {
                   child: Center(
                     child: Padding(
                       padding: EdgeInsets.all(20.0),
-                      child: Text('No quiz attempts in this period. Take a quiz to view your score trend!'),
+                      child: Text(
+                        'No quiz attempts in this period. Take a quiz to view your score trend!',
+                      ),
                     ),
                   ),
                 )
@@ -272,11 +468,16 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen> {
                             getTooltipItems: (touchedSpots) {
                               return touchedSpots.map((spot) {
                                 final idx = spot.x.toInt();
-                                if (idx >= 0 && idx < chronologicalQuizzes.length) {
+                                if (idx >= 0 &&
+                                    idx < chronologicalQuizzes.length) {
                                   final q = chronologicalQuizzes[idx];
                                   return LineTooltipItem(
                                     '${q.topic}\nScore: ${spot.y.toInt()}%',
-                                    const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11),
+                                    const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 11,
+                                    ),
                                   );
                                 }
                                 return null;
@@ -288,7 +489,9 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen> {
                           show: true,
                           drawVerticalLine: false,
                           getDrawingHorizontalLine: (val) => FlLine(
-                            color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                            color: isDark
+                                ? AppColors.darkBorder
+                                : AppColors.lightBorder,
                             strokeWidth: 0.8,
                           ),
                         ),
@@ -299,7 +502,13 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen> {
                               showTitles: true,
                               getTitlesWidget: (value, meta) {
                                 if (value % 25 != 0) return const SizedBox();
-                                return Text('${value.toInt()}%', style: AppTextStyles.monoBold(context, fontSize: 10));
+                                return Text(
+                                  '${value.toInt()}%',
+                                  style: AppTextStyles.monoBold(
+                                    context,
+                                    fontSize: 10,
+                                  ),
+                                );
                               },
                               reservedSize: 34,
                             ),
@@ -309,10 +518,17 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen> {
                               showTitles: true,
                               getTitlesWidget: (value, meta) {
                                 final idx = value.toInt();
-                                if (idx >= 0 && idx < chronologicalQuizzes.length) {
+                                if (idx >= 0 &&
+                                    idx < chronologicalQuizzes.length) {
                                   return Padding(
                                     padding: const EdgeInsets.only(top: 6.0),
-                                    child: Text('Q${idx + 1}', style: AppTextStyles.monoBold(context, fontSize: 10)),
+                                    child: Text(
+                                      'Q${idx + 1}',
+                                      style: AppTextStyles.monoBold(
+                                        context,
+                                        fontSize: 10,
+                                      ),
+                                    ),
                                   );
                                 }
                                 return const SizedBox();
@@ -320,15 +536,22 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen> {
                               reservedSize: 22,
                             ),
                           ),
-                          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                          topTitles: const AxisTitles(
+                            sideTitles: SideTitles(showTitles: false),
+                          ),
+                          rightTitles: const AxisTitles(
+                            sideTitles: SideTitles(showTitles: false),
+                          ),
                         ),
                         borderData: FlBorderData(show: false),
                         lineBarsData: [
                           LineChartBarData(
                             spots: List.generate(
                               chronologicalQuizzes.length,
-                              (i) => FlSpot(i.toDouble(), chronologicalQuizzes[i].accuracy),
+                              (i) => FlSpot(
+                                i.toDouble(),
+                                chronologicalQuizzes[i].accuracy,
+                              ),
                             ),
                             isCurved: chronologicalQuizzes.length > 1,
                             color: AppColors.primary,
@@ -336,12 +559,13 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen> {
                             isStrokeCapRound: true,
                             dotData: FlDotData(
                               show: true,
-                              getDotPainter: (spot, percent, barData, index) => FlDotCirclePainter(
-                                radius: 4,
-                                color: AppColors.primary,
-                                strokeWidth: 2,
-                                strokeColor: Colors.white,
-                              ),
+                              getDotPainter: (spot, percent, barData, index) =>
+                                  FlDotCirclePainter(
+                                    radius: 4,
+                                    color: AppColors.primary,
+                                    strokeWidth: 2,
+                                    strokeColor: Colors.white,
+                                  ),
                             ),
                             belowBarData: BarAreaData(
                               show: true,
@@ -356,9 +580,12 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen> {
               const SizedBox(height: 20),
 
               // Subject Mastery Bar Chart
-              Text('Subject Mastery (%)', style: AppTextStyles.displayBold(context, fontSize: 16)),
+              Text(
+                'Subject Mastery (%)',
+                style: AppTextStyles.displayBold(context, fontSize: 16),
+              ),
               const SizedBox(height: 10),
-              
+
               subjectProgressAsync.when(
                 data: (subjects) {
                   if (subjects.isEmpty) {
@@ -366,7 +593,9 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen> {
                       child: Center(
                         child: Padding(
                           padding: EdgeInsets.all(24.0),
-                          child: Text('Complete your first quiz to see subject mastery charts!'),
+                          child: Text(
+                            'Complete your first quiz to see subject mastery charts!',
+                          ),
                         ),
                       ),
                     );
@@ -384,10 +613,15 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen> {
                             touchTooltipData: BarTouchTooltipData(
                               getTooltipItem: (group, groupIndex, rod, rodIndex) {
                                 final sub = subjects[group.x.toInt()];
-                                final subObj = AppSubjects.getById(sub['id'] as String);
+                                final subObj = AppSubjects.getById(
+                                  sub['id'] as String,
+                                );
                                 return BarTooltipItem(
                                   '${subObj?.shortName ?? sub['id']}: ${rod.toY.toInt()}%',
-                                  const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                  const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 );
                               },
                             ),
@@ -397,18 +631,31 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen> {
                             bottomTitles: AxisTitles(
                               sideTitles: SideTitles(
                                 showTitles: true,
-                                getTitlesWidget: (double value, TitleMeta meta) {
-                                  if (value.toInt() >= subjects.length || value.toInt() < 0) return const SizedBox();
-                                  final subjectId = subjects[value.toInt()]['id'] as String;
-                                  final subObj = AppSubjects.getById(subjectId);
-                                  return Padding(
-                                    padding: const EdgeInsets.only(top: 8.0),
-                                    child: Text(
-                                      subObj?.shortName ?? subjectId.toUpperCase(),
-                                      style: AppTextStyles.monoBold(context, fontSize: 11),
-                                    ),
-                                  );
-                                },
+                                getTitlesWidget:
+                                    (double value, TitleMeta meta) {
+                                      if (value.toInt() >= subjects.length ||
+                                          value.toInt() < 0)
+                                        return const SizedBox();
+                                      final subjectId =
+                                          subjects[value.toInt()]['id']
+                                              as String;
+                                      final subObj = AppSubjects.getById(
+                                        subjectId,
+                                      );
+                                      return Padding(
+                                        padding: const EdgeInsets.only(
+                                          top: 8.0,
+                                        ),
+                                        child: Text(
+                                          subObj?.shortName ??
+                                              subjectId.toUpperCase(),
+                                          style: AppTextStyles.monoBold(
+                                            context,
+                                            fontSize: 11,
+                                          ),
+                                        ),
+                                      );
+                                    },
                                 reservedSize: 28,
                               ),
                             ),
@@ -417,54 +664,77 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen> {
                                 showTitles: true,
                                 getTitlesWidget: (value, meta) {
                                   if (value % 25 != 0) return const SizedBox();
-                                  return Text('${value.toInt()}', style: AppTextStyles.monoBold(context, fontSize: 10));
+                                  return Text(
+                                    '${value.toInt()}',
+                                    style: AppTextStyles.monoBold(
+                                      context,
+                                      fontSize: 10,
+                                    ),
+                                  );
                                 },
                                 reservedSize: 28,
                               ),
                             ),
-                            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                            rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                            topTitles: const AxisTitles(
+                              sideTitles: SideTitles(showTitles: false),
+                            ),
+                            rightTitles: const AxisTitles(
+                              sideTitles: SideTitles(showTitles: false),
+                            ),
                           ),
                           gridData: FlGridData(
                             show: true,
                             drawVerticalLine: false,
                             getDrawingHorizontalLine: (value) => FlLine(
-                              color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                              color: isDark
+                                  ? AppColors.darkBorder
+                                  : AppColors.lightBorder,
                               strokeWidth: 0.8,
                             ),
                           ),
                           borderData: FlBorderData(show: false),
-                          barGroups: List.generate(
-                            subjects.length,
-                            (index) {
-                              final data = subjects[index];
-                              final accuracy = (data['accuracy'] as num?)?.toDouble() ?? 0.0;
-                              final subObj = AppSubjects.getById(data['id'] as String);
-                              return BarChartGroupData(
-                                x: index,
-                                barRods: [
-                                  BarChartRodData(
-                                    toY: accuracy,
-                                    color: subObj?.color ?? AppColors.primary,
-                                    width: 18,
-                                    borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
+                          barGroups: List.generate(subjects.length, (index) {
+                            final data = subjects[index];
+                            final accuracy =
+                                (data['accuracy'] as num?)?.toDouble() ?? 0.0;
+                            final subObj = AppSubjects.getById(
+                              data['id'] as String,
+                            );
+                            return BarChartGroupData(
+                              x: index,
+                              barRods: [
+                                BarChartRodData(
+                                  toY: accuracy,
+                                  color: subObj?.color ?? AppColors.primary,
+                                  width: 18,
+                                  borderRadius: const BorderRadius.vertical(
+                                    top: Radius.circular(6),
                                   ),
-                                ],
-                              );
-                            },
-                          ),
+                                ),
+                              ],
+                            );
+                          }),
                         ),
                       ),
                     ),
                   );
                 },
-                loading: () => const Center(child: Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator())),
-                error: (e, _) => Center(child: Text('Error loading charts: $e')),
+                loading: () => const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(32),
+                    child: CircularProgressIndicator(),
+                  ),
+                ),
+                error: (e, _) =>
+                    Center(child: Text('Error loading charts: $e')),
               ),
               const SizedBox(height: 20),
 
               // Recent Quiz History List
-              Text('Recent Quiz Sessions', style: AppTextStyles.displayBold(context, fontSize: 16)),
+              Text(
+                'Recent Quiz Sessions',
+                style: AppTextStyles.displayBold(context, fontSize: 16),
+              ),
               const SizedBox(height: 10),
 
               if (filteredQuizzes.isEmpty)
@@ -472,7 +742,10 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen> {
                   child: Center(
                     child: Padding(
                       padding: const EdgeInsets.all(16.0),
-                      child: Text('No quiz activity in this time period.', style: AppTextStyles.bodySecondary(context)),
+                      child: Text(
+                        'No quiz activity in this time period.',
+                        style: AppTextStyles.bodySecondary(context),
+                      ),
                     ),
                   ),
                 )
@@ -481,14 +754,18 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen> {
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   itemCount: filteredQuizzes.take(5).length,
-                  separatorBuilder: (context, index) => const SizedBox(height: 8),
+                  separatorBuilder: (context, index) =>
+                      const SizedBox(height: 8),
                   itemBuilder: (context, index) {
                     final quiz = filteredQuizzes[index];
                     final subObj = AppSubjects.getById(quiz.subjectId);
                     final isPass = quiz.accuracy >= 70;
 
                     return CustomCard(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
                       child: Row(
                         children: [
                           Container(
@@ -501,9 +778,13 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen> {
                               shape: BoxShape.circle,
                             ),
                             child: Icon(
-                              quiz.isMockTest ? LucideIcons.layers : LucideIcons.checkSquare,
+                              quiz.isMockTest
+                                  ? LucideIcons.layers
+                                  : LucideIcons.checkSquare,
                               size: 18,
-                              color: isPass ? AppColors.success : AppColors.warning,
+                              color: isPass
+                                  ? AppColors.success
+                                  : AppColors.warning,
                             ),
                           ),
                           const SizedBox(width: 12),
@@ -512,19 +793,33 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  quiz.isMockTest ? 'Mock Exam' : (subObj?.name ?? quiz.topic),
-                                  style: AppTextStyles.body(context, fontWeight: FontWeight.w700),
+                                  quiz.isMockTest
+                                      ? 'Mock Exam'
+                                      : (subObj?.name ?? quiz.topic),
+                                  style: AppTextStyles.body(
+                                    context,
+                                    fontWeight: FontWeight.w700,
+                                  ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
                                 Text(
                                   '${quiz.score}/${quiz.totalQuestions} Correct • ${quiz.accuracy.toInt()}%',
-                                  style: AppTextStyles.bodySecondary(context, fontSize: 12),
+                                  style: AppTextStyles.bodySecondary(
+                                    context,
+                                    fontSize: 12,
+                                  ),
                                 ),
                               ],
                             ),
                           ),
-                          Text('${quiz.durationMinutes}m', style: AppTextStyles.monoBold(context, fontSize: 13)),
+                          Text(
+                            '${quiz.durationMinutes}m',
+                            style: AppTextStyles.monoBold(
+                              context,
+                              fontSize: 13,
+                            ),
+                          ),
                         ],
                       ),
                     );
@@ -559,7 +854,9 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen> {
               fontSize: 13,
               color: isSelected
                   ? Colors.white
-                  : (isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary),
+                  : (isDark
+                        ? AppColors.darkTextSecondary
+                        : AppColors.lightTextSecondary),
             ),
           ),
         ),

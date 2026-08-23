@@ -14,7 +14,11 @@ service cloud.firestore {
 
     // Canonical User-Scoped Data Structure
     match /users/{userId} {
-      allow read, write: if isOwner(userId);
+      allow read, delete: if isOwner(userId);
+      allow create, update: if isOwner(userId) && 
+        (request.resource.data.userId == null || request.resource.data.userId == userId) &&
+        (request.resource.data.dailyStudyGoalMinutes == null || request.resource.data.dailyStudyGoalMinutes >= 0) &&
+        (request.resource.data.currentStreak == null || request.resource.data.currentStreak >= 0);
       
       // Chat Threads and nested messages
       match /chatThreads/{threadId} {
@@ -27,7 +31,11 @@ service cloud.firestore {
 
       // Quiz and Mock Test Sessions
       match /quizzes/{quizId} {
-        allow read, write: if isOwner(userId);
+        allow read, delete: if isOwner(userId);
+        allow create, update: if isOwner(userId) &&
+          (request.resource.data.score == null || request.resource.data.score >= 0) &&
+          (request.resource.data.totalQuestions == null || request.resource.data.totalQuestions >= 0) &&
+          (request.resource.data.score == null || request.resource.data.totalQuestions == null || request.resource.data.score <= request.resource.data.totalQuestions);
       }
 
       // Summaries
@@ -37,12 +45,17 @@ service cloud.firestore {
 
       // Subject Progress
       match /subjectProgress/{subjectId} {
-        allow read, write: if isOwner(userId);
+        allow read, delete: if isOwner(userId);
+        allow create, update: if isOwner(userId) &&
+          (request.resource.data.accuracy == null || (request.resource.data.accuracy >= 0 && request.resource.data.accuracy <= 100)) &&
+          (request.resource.data.totalQuizzes == null || request.resource.data.totalQuizzes >= 0);
       }
       
       // Daily Study Stats
       match /dailyStats/{date} {
-        allow read, write: if isOwner(userId);
+        allow read, delete: if isOwner(userId);
+        allow create, update: if isOwner(userId) &&
+          (request.resource.data.minutesStudied == null || request.resource.data.minutesStudied >= 0);
       }
       
       // Study Activities Log
@@ -62,7 +75,10 @@ service cloud.firestore {
 
       // Aggregates for All-Time Analytics
       match /aggregates/{aggregateId} {
-        allow read, write: if isOwner(userId);
+        allow read, delete: if isOwner(userId);
+        allow create, update: if isOwner(userId) &&
+          (request.resource.data.accuracy == null || (request.resource.data.accuracy >= 0 && request.resource.data.accuracy <= 100)) &&
+          (request.resource.data.totalQuizzes == null || request.resource.data.totalQuizzes >= 0);
       }
 
       // Settings and Preferences

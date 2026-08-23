@@ -7,7 +7,9 @@ import 'package:studymate_ai/features/practice/presentation/quiz_screen.dart';
 import 'package:studymate_ai/shared/models/quiz_model.dart';
 
 void main() {
-  testWidgets('QuizScreen renders question text and options correctly', (tester) async {
+  testWidgets('QuizScreen renders question text and options correctly', (
+    tester,
+  ) async {
     final mockSession = QuizSession(
       id: 'quiz_test_1',
       userId: 'user_1',
@@ -27,18 +29,22 @@ void main() {
         ),
         QuizQuestion(
           question: 'What is a critical section?',
-          options: ['Code accessing shared resource', 'CPU cache', 'Deadlock state', 'Thread queue'],
+          options: [
+            'Code accessing shared resource',
+            'CPU cache',
+            'Deadlock state',
+            'Thread queue',
+          ],
           correctIndex: 0,
-          explanation: 'A critical section is a piece of code that accesses shared memory.',
+          explanation:
+              'A critical section is a piece of code that accesses shared memory.',
         ),
       ],
     );
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [
-          currentQuizProvider.overrideWith((ref) => mockSession),
-        ],
+        overrides: [currentQuizProvider.overrideWith((ref) => mockSession)],
         child: MaterialApp(
           theme: AppTheme.lightTheme,
           home: const QuizScreen(),
@@ -46,7 +52,10 @@ void main() {
       ),
     );
 
-    expect(find.text('Which scheduling algorithm is non-preemptive?'), findsOneWidget);
+    expect(
+      find.text('Which scheduling algorithm is non-preemptive?'),
+      findsOneWidget,
+    );
     expect(find.text('FCFS'), findsOneWidget);
     expect(find.text('Round Robin'), findsOneWidget);
     expect(find.text('Next Question'), findsOneWidget);

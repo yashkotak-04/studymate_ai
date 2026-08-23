@@ -5,7 +5,9 @@ import 'package:firebase_remote_config/firebase_remote_config.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-final appFirebaseServiceProvider = Provider<AppFirebaseService>((ref) => AppFirebaseService());
+final appFirebaseServiceProvider = Provider<AppFirebaseService>(
+  (ref) => AppFirebaseService(),
+);
 final firebaseServiceProvider = appFirebaseServiceProvider;
 
 class AppFirebaseService {
@@ -19,8 +21,12 @@ class AppFirebaseService {
     // 1. App Check
     try {
       await FirebaseAppCheck.instance.activate(
-        androidProvider: kDebugMode ? AndroidProvider.debug : AndroidProvider.playIntegrity,
-        appleProvider: kDebugMode ? AppleProvider.debug : AppleProvider.deviceCheck,
+        androidProvider: kDebugMode
+            ? AndroidProvider.debug
+            : AndroidProvider.playIntegrity,
+        appleProvider: kDebugMode
+            ? AppleProvider.debug
+            : AppleProvider.deviceCheck,
       );
     } catch (e) {
       debugPrint('Firebase App Check initialization info: $e');
@@ -29,7 +35,8 @@ class AppFirebaseService {
     // 2. Crashlytics
     try {
       if (!kIsWeb) {
-        FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+        FlutterError.onError =
+            FirebaseCrashlytics.instance.recordFlutterFatalError;
         PlatformDispatcher.instance.onError = (error, stack) {
           FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
           return true;
@@ -50,14 +57,18 @@ class AppFirebaseService {
     // 4. Remote Config
     try {
       _remoteConfig = FirebaseRemoteConfig.instance;
-      await _remoteConfig?.setConfigSettings(RemoteConfigSettings(
-        fetchTimeout: const Duration(seconds: 30),
-        minimumFetchInterval: kDebugMode ? const Duration(minutes: 5) : const Duration(hours: 1),
-      ));
-      
+      await _remoteConfig?.setConfigSettings(
+        RemoteConfigSettings(
+          fetchTimeout: const Duration(seconds: 30),
+          minimumFetchInterval: kDebugMode
+              ? const Duration(minutes: 5)
+              : const Duration(hours: 1),
+        ),
+      );
+
       await _remoteConfig?.setDefaults(const {
         'ai_enabled': true,
-        'ai_model_name': 'gemini-2.5-flash',
+        'ai_model_name': 'gemini-3.7-flash',
         'max_mcq_count': 20,
         'max_summary_input': 10000,
         'max_pdf_size_mb': 10,
@@ -74,11 +85,14 @@ class AppFirebaseService {
   String get aiModelName {
     try {
       final name = _remoteConfig?.getString('ai_model_name');
-      if (name != null && name.isNotEmpty && !name.contains('1.5')) {
+      if (name != null &&
+          name.isNotEmpty &&
+          !name.contains('1.5') &&
+          !name.contains('1.0')) {
         return name;
       }
     } catch (_) {}
-    return 'gemini-2.5-flash';
+    return 'gemini-3.7-flash';
   }
 
   bool get aiEnabled {
@@ -137,23 +151,34 @@ class AppFirebaseService {
   Future<void> logSignupCompleted(String method) =>
       logEvent('signup_completed', {'method': method});
 
-  Future<void> logOnboardingCompleted() =>
-      logEvent('onboarding_completed');
+  Future<void> logOnboardingCompleted() => logEvent('onboarding_completed');
 
   Future<void> logChatStarted(String mode) =>
       logEvent('chat_started', {'mode': mode});
 
   Future<void> logQuizGenerated(String subject, int count, bool isMock) =>
-      logEvent('quiz_generated', {'subject': subject, 'count': count, 'is_mock': isMock});
+      logEvent('quiz_generated', {
+        'subject': subject,
+        'count': count,
+        'is_mock': isMock,
+      });
 
-  Future<void> logQuizCompleted(String subject, int score, int total, bool isMock) =>
-      logEvent('quiz_completed', {'subject': subject, 'score': score, 'total': total, 'is_mock': isMock});
+  Future<void> logQuizCompleted(
+    String subject,
+    int score,
+    int total,
+    bool isMock,
+  ) => logEvent('quiz_completed', {
+    'subject': subject,
+    'score': score,
+    'total': total,
+    'is_mock': isMock,
+  });
 
   Future<void> logSummaryGenerated(String source) =>
       logEvent('summary_generated', {'source_type': source});
 
-  Future<void> logStudyPlanGenerated() =>
-      logEvent('study_plan_generated');
+  Future<void> logStudyPlanGenerated() => logEvent('study_plan_generated');
 
   Future<void> logRecommendationOpened(String actionType) =>
       logEvent('recommendation_opened', {'action_type': actionType});

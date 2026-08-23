@@ -14,7 +14,10 @@ void main() {
 
       final summary = GeneratedSummary.fromJson(json);
 
-      expect(summary.quickSummary, equals('Core premise of Operating Systems.'));
+      expect(
+        summary.quickSummary,
+        equals('Core premise of Operating Systems.'),
+      );
       expect(summary.importantPoints.length, equals(2));
       expect(summary.keyTerms.length, equals(2));
       expect(summary.examFocus.length, equals(2));

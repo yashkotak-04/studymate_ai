@@ -91,7 +91,9 @@ class AuthRepository {
       final user = _firebaseAuth.currentUser;
       if (user == null) return;
 
-      if (passwordForReauth != null && passwordForReauth.isNotEmpty && user.email != null) {
+      if (passwordForReauth != null &&
+          passwordForReauth.isNotEmpty &&
+          user.email != null) {
         final cred = EmailAuthProvider.credential(
           email: user.email!,
           password: passwordForReauth,

@@ -11,11 +11,14 @@ final progressRepositoryProvider = Provider<ProgressRepository>((ref) {
 
 final dailyStatsProvider = StreamProvider<Map<String, dynamic>>((ref) {
   final user = ref.watch(authStateProvider).value;
-  if (user == null) return Stream.value({'minutesStudied': 0, 'goalMet': false});
+  if (user == null)
+    return Stream.value({'minutesStudied': 0, 'goalMet': false});
   return ref.watch(progressRepositoryProvider).streamDailyStats(user.uid);
 });
 
-final subjectProgressProvider = StreamProvider<List<Map<String, dynamic>>>((ref) {
+final subjectProgressProvider = StreamProvider<List<Map<String, dynamic>>>((
+  ref,
+) {
   final user = ref.watch(authStateProvider).value;
   if (user == null) return Stream.value([]);
   return ref.watch(progressRepositoryProvider).streamSubjectProgress(user.uid);
@@ -24,7 +27,15 @@ final subjectProgressProvider = StreamProvider<List<Map<String, dynamic>>>((ref)
 final allTimeAggregatesProvider = StreamProvider<Map<String, dynamic>>((ref) {
   final user = ref.watch(authStateProvider).value;
   if (user == null) return Stream.value({});
-  return ref.watch(progressRepositoryProvider).streamAllTimeAggregates(user.uid);
+  return ref
+      .watch(progressRepositoryProvider)
+      .streamAllTimeAggregates(user.uid);
+});
+
+final allDailyStatsProvider = StreamProvider<List<Map<String, dynamic>>>((ref) {
+  final user = ref.watch(authStateProvider).value;
+  if (user == null) return Stream.value([]);
+  return ref.watch(progressRepositoryProvider).streamAllDailyStats(user.uid);
 });
 
 class ProgressRepository {
@@ -74,17 +85,22 @@ class ProgressRepository {
       int todayMinutes = session.durationMinutes;
       int todayQuizzes = 1;
       if (dailyDoc.exists && dailyDoc.data() != null) {
-        todayMinutes += (dailyDoc.data()!['minutesStudied'] as num?)?.toInt() ?? 0;
-        todayQuizzes += (dailyDoc.data()!['quizzesCompleted'] as num?)?.toInt() ?? 0;
+        todayMinutes +=
+            (dailyDoc.data()!['minutesStudied'] as num?)?.toInt() ?? 0;
+        todayQuizzes +=
+            (dailyDoc.data()!['quizzesCompleted'] as num?)?.toInt() ?? 0;
       }
       bool goalMet = todayMinutes >= dailyGoal;
 
       // 4. Read Subject Progress (if not mock test)
       DocumentReference<Map<String, dynamic>>? subjectProgressRef;
       DocumentSnapshot<Map<String, dynamic>>? subjectDoc;
-      final isRealSubject = !session.isMockTest && AppSubjects.getById(session.subjectId) != null;
+      final isRealSubject =
+          !session.isMockTest && AppSubjects.getById(session.subjectId) != null;
       if (isRealSubject) {
-        subjectProgressRef = userRef.collection('subjectProgress').doc(session.subjectId);
+        subjectProgressRef = userRef
+            .collection('subjectProgress')
+            .doc(session.subjectId);
         subjectDoc = await transaction.get(subjectProgressRef);
       }
 
@@ -107,7 +123,9 @@ class ProgressRepository {
       aggTotalQuestions += session.totalQuestions;
       aggCorrectAnswers += session.score;
       aggTotalMinutes += session.durationMinutes;
-      final aggAccuracy = aggTotalQuestions > 0 ? (aggCorrectAnswers / aggTotalQuestions) * 100.0 : 0.0;
+      final aggAccuracy = aggTotalQuestions > 0
+          ? (aggCorrectAnswers / aggTotalQuestions) * 100.0
+          : 0.0;
 
       // 6. Calculate Streak
       DateTime today = DateTime.parse(todayKey);
@@ -160,14 +178,19 @@ class ProgressRepository {
         int subScore = session.score;
         int subTotalQuestions = session.totalQuestions;
 
-        if (subjectDoc != null && subjectDoc.exists && subjectDoc.data() != null) {
+        if (subjectDoc != null &&
+            subjectDoc.exists &&
+            subjectDoc.data() != null) {
           final subData = subjectDoc.data()!;
           subQuizzes += (subData['totalQuizzes'] as num?)?.toInt() ?? 0;
           subScore += (subData['correctAnswers'] as num?)?.toInt() ?? 0;
-          subTotalQuestions += (subData['totalQuestions'] as num?)?.toInt() ?? 0;
+          subTotalQuestions +=
+              (subData['totalQuestions'] as num?)?.toInt() ?? 0;
         }
 
-        final subAccuracy = subTotalQuestions > 0 ? (subScore / subTotalQuestions) * 100.0 : 0.0;
+        final subAccuracy = subTotalQuestions > 0
+            ? (subScore / subTotalQuestions) * 100.0
+            : 0.0;
 
         transaction.set(subjectProgressRef, {
           'totalQuizzes': subQuizzes,
@@ -210,7 +233,11 @@ class ProgressRepository {
         .collection('dailyStats')
         .doc(todayKey)
         .snapshots()
-        .map((doc) => doc.exists ? doc.data()! : {'minutesStudied': 0, 'goalMet': false});
+        .map(
+          (doc) => doc.exists
+              ? doc.data()!
+              : {'minutesStudied': 0, 'goalMet': false},
+        );
   }
 
   Stream<Map<String, dynamic>> streamAllTimeAggregates(String uid) {
@@ -220,13 +247,17 @@ class ProgressRepository {
         .collection('aggregates')
         .doc('quizStats')
         .snapshots()
-        .map((doc) => doc.exists ? doc.data()! : {
-              'totalQuizzes': 0,
-              'totalQuestions': 0,
-              'correctAnswers': 0,
-              'totalMinutesStudied': 0,
-              'accuracy': 0.0,
-            });
+        .map(
+          (doc) => doc.exists
+              ? doc.data()!
+              : {
+                  'totalQuizzes': 0,
+                  'totalQuestions': 0,
+                  'correctAnswers': 0,
+                  'totalMinutesStudied': 0,
+                  'accuracy': 0.0,
+                },
+        );
   }
 
   Stream<List<Map<String, dynamic>>> streamSubjectProgress(String uid) {
@@ -236,12 +267,12 @@ class ProgressRepository {
         .collection('subjectProgress')
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs.map((doc) {
-        final data = doc.data();
-        data['id'] = doc.id;
-        return data;
-      }).toList();
-    });
+          return snapshot.docs.map((doc) {
+            final data = doc.data();
+            data['id'] = doc.id;
+            return data;
+          }).toList();
+        });
   }
 
   Stream<List<Map<String, dynamic>>> streamAllDailyStats(String uid) {

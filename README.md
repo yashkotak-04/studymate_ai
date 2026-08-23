@@ -1,6 +1,6 @@
 # 🎓 StudyMate AI — Production Flutter Application
 
-StudyMate AI is a modern, comprehensive, AI-powered study companion and exam-preparation platform built with **Flutter**, **Firebase**, and **Firebase AI Logic (Gemini 2.5 / 2.0 Flash)**.
+StudyMate AI is a modern, comprehensive, AI-powered study companion and exam-preparation platform built with **Flutter**, **Firebase**, and **Firebase AI Logic (Gemini 3.x / `gemini-3.7-flash`)**.
 
 Designed specifically for diploma and undergraduate engineering students, StudyMate AI transforms complex syllabi into digestible interactive tutoring, adaptive multiple-choice quizzes, timed mock exams, multimodal document summaries, weekly study timetables, and personalized performance analytics.
 
@@ -18,12 +18,12 @@ Designed specifically for diploma and undergraduate engineering students, StudyM
 
 * **📝 Practice MCQs & Timed Mock Exams**:
   * Customizable question sets by subject, topic, and difficulty (Easy, Medium, Hard).
-  * Timed **Full-Length Mock Exam Mode** using canonical timed duration (`MockTestConfig`).
+  * Timed **Full-Length Mock Exam Mode** using canonical 2-min per question pacing (`MockTestConfig`).
   * Interactive question palette, answer tracking, and review mode with AI explanations.
-  * **Atomic & Idempotent Finalization**: Single-transaction Firestore ACID writes updating streaks, subject mastery, and daily stats without double-counting.
+  * **Atomic & Idempotent Finalization**: Single-transaction Firestore ACID writes updating streaks, subject mastery, daily stats, and all-time durable aggregates without double-counting.
 
 * **📑 Multimodal Document Summarization & PDF-to-Practice**:
-  * Direct PDF & text document upload with file-size enforcement.
+  * Direct PDF & text document upload passing real byte streams (`InlineDataPart`) directly to Gemini with 10MB file-size enforcement.
   * Structured **5-Section AI Breakdown**: Quick Summary, Important Points, Key Terms, Exam Focus Areas, and Revision Questions.
   * Instant **"Generate Quiz from Document"** pipeline.
 
@@ -32,7 +32,7 @@ Designed specifically for diploma and undergraduate engineering students, StudyM
   * Persistent interactive task checkboxes saved in real-time to Firestore.
 
 * **📊 Analytics, Progress & Score Trends**:
-  * Time-filtered analytics (**Week**, **Month**, **All Time**).
+  * Period-filtered analytics (**Week**, **Month**, **All Time**) with period-specific study minutes and subject accuracy.
   * Chronological **Score Trend Line Chart** powered by `fl_chart`.
   * Subject Mastery horizontal/vertical bar charts.
 
@@ -43,7 +43,8 @@ Designed specifically for diploma and undergraduate engineering students, StudyM
 * **🔒 Security, Subjects & Account Management**:
   * Canonical user-scoped security architecture (`users/{uid}/...`).
   * 3-Way Theme selector (**System Default**, **Light**, **Dark**).
-  * Comprehensive account deletion with complete Firestore data purging.
+  * 4-Way Default AI Mode selector (**Beginner**, **Student**, **Exam**, **Viva**).
+  * Comprehensive cascading account deletion with complete Firestore and Storage data purging.
 
 ---
 
@@ -55,8 +56,8 @@ Designed specifically for diploma and undergraduate engineering students, StudyM
 | **State Management** | Flutter Riverpod 2.6.1 (`flutter_riverpod`) |
 | **Navigation** | GoRouter 14.8.1 (`go_router`) with redirect auth guards |
 | **Backend & Cloud** | Firebase Core, Firebase Auth, Cloud Firestore, Firebase Storage |
-| **AI Integration** | Firebase AI Logic (`firebase_ai`) using Gemini 2.5 / 2.0 Flash |
-| **Reliability & Config** | Firebase App Check, Crashlytics, Remote Config, Analytics |
+| **AI Integration** | Firebase AI Logic (`firebase_ai`) with Gemini 3.x (`gemini-3.7-flash`) |
+| **Reliability & Config** | Firebase App Check, Crashlytics, Remote Config, Analytics, Messaging |
 | **Charts & Visuals** | `fl_chart`, `lucide_icons_flutter`, `google_fonts` |
 | **Hardware / Native** | `speech_to_text`, `file_picker`, `flutter_native_splash` |
 
@@ -70,7 +71,7 @@ studymate_ai/
 ├── android/                    # Android native project configuration & Kotlin DSL
 ├── assets/images/              # Launcher icons & assets
 ├── firestore.indexes.json      # Composite Firestore indexes
-├── firestore.rules             # User-scoped Firestore security rules
+├── firestore.rules             # User-scoped Firestore security rules with field validation
 ├── storage.rules               # Firebase Storage validation & upload rules
 ├── lib/
 │   ├── app/
@@ -85,17 +86,18 @@ studymate_ai/
 │   │   ├── dashboard/          # Home dashboard, subject cards, metrics summary
 │   │   ├── planner/            # AI 7-day study timetable & task tracking
 │   │   ├── practice/           # MCQ generator, Quiz engine, Mock exam timer & result review
-│   │   ├── profile/            # Profile settings, subject enrollment, theme & security
+│   │   ├── profile/            # Profile settings, subject enrollment, theme, AI mode & security
 │   │   ├── progress/           # Progress analytics, score trend charts & subject mastery
 │   │   ├── recommendations/    # Actionable diagnostic study recommendations
 │   │   └── summary/            # PDF notes summarizer, 5-section breakdown & quiz bridge
 │   ├── shared/
-│   │   ├── models/             # Domain models (Subject, Chat, Quiz, Summary, Plan, User)
+│   │   ├── models/             # Domain models (Subject, Chat, Quiz, Summary, Plan, User, Rec)
 │   │   ├── providers/          # Global theme and state providers
 │   │   └── widgets/            # CustomButton, CustomCard, CustomChip, ProgressRing, ScreenHeader
-│   ├── firebase_options.dart   # Platform Firebase configuration
+│   ├── firebase_options.dart   # Platform Firebase configuration with bootstrap validation
 │   └── main.dart               # Sequential bootstrap with App Check & fallback error screen
-└── test/                       # Comprehensive unit and widget test suite (25+ passing tests)
+├── integration_test/           # Real end-to-end integration flows (Auth, Quiz, Recs)
+└── test/                       # 31 verified unit and widget tests (100% passing)
 ```
 
 ---
@@ -135,10 +137,12 @@ StudyMate AI supports dynamic cloud configuration via **Firebase Remote Config**
 
 | Parameter Key | Default Value | Description |
 |---|---|---|
-| `ai_model_name` | `gemini-2.5-flash` | Gemini model identifier used for all AI operations |
+| `ai_enabled` | `true` | Master kill-switch for AI generative features |
+| `ai_model_name` | `gemini-3.7-flash` | Gemini model identifier used for all AI operations |
+| `max_mcq_count` | `20` | Maximum number of questions per generated quiz set |
+| `max_summary_input` | `10000` | Character limit for plain text notes summarization |
 | `max_pdf_size_mb` | `10` | Maximum allowable PDF / document upload size in megabytes |
-| `max_summary_input_chars` | `20000` | Character limit for plain text notes summarization |
-| `enable_ai_caching` | `true` | Enables client-side response caching |
+| `max_chat_context_messages` | `10` | Context window size of conversation history passed to Gemini |
 
 ---
 
@@ -149,6 +153,11 @@ Run the full automated test suite:
 flutter test
 ```
 
+Run integration test flows:
+```bash
+flutter test integration_test/app_flow_test.dart
+```
+
 Run static analysis:
 ```bash
 flutter analyze
@@ -156,7 +165,7 @@ flutter analyze
 
 Format code check:
 ```bash
-dart format --output=none --set-exit-if-changed .
+dart format --output=none --set-exit-if-changed lib test integration_test
 ```
 
 ---
@@ -168,8 +177,13 @@ dart format --output=none --set-exit-if-changed .
 flutter build apk --debug
 ```
 
-### Android Release Bundle (Google Play)
-1. Configure your release signing keystore in `android/key.properties`.
+### Android Release APK
+```bash
+flutter build apk --release
+```
+
+### Android Release Bundle (Google Play AAB)
+1. Configure your release signing keystore in `android/key.properties` (see `android/key.properties.example`).
 2. Run:
 ```bash
 flutter build appbundle --release

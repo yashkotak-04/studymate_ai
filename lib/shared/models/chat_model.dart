@@ -8,28 +8,32 @@ enum ExplanationMode {
     label: 'Beginner',
     icon: LucideIcons.sparkles,
     desc: 'Plain language, everyday analogies',
-    systemPrompt: 'Explain in clear, intuitive beginner language. Use concrete everyday analogies and avoid overly dense academic jargon unless immediately defined with simple examples.',
+    systemPrompt:
+        'Explain in clear, intuitive beginner language. Use concrete everyday analogies and avoid overly dense academic jargon unless immediately defined with simple examples.',
   ),
   student(
     id: 'student',
     label: 'Student',
     icon: LucideIcons.bookOpenCheck,
     desc: 'Textbook depth, exam vocabulary',
-    systemPrompt: 'Provide comprehensive, academically rigorous explanations suitable for university/diploma students. Include standard technical definitions, principles, and structured breakdowns.',
+    systemPrompt:
+        'Provide comprehensive, academically rigorous explanations suitable for university/diploma students. Include standard technical definitions, principles, and structured breakdowns.',
   ),
   exam(
     id: 'exam',
     label: 'Exam',
     icon: LucideIcons.target,
     desc: 'Short, scorable, to-the-point',
-    systemPrompt: 'Provide concise, highly scorable, bulleted answers designed for quick memorization and maximum exam marks. Highlight key definitions, formulas, pros/cons, and diagrams/diagram notes where applicable.',
+    systemPrompt:
+        'Provide concise, highly scorable, bulleted answers designed for quick memorization and maximum exam marks. Highlight key definitions, formulas, pros/cons, and diagrams/diagram notes where applicable.',
   ),
   viva(
     id: 'viva',
     label: 'Viva',
     icon: LucideIcons.user,
     desc: 'Spoken answers, follow-up ready',
-    systemPrompt: 'Deliver concise, conversational answers tailored for oral exams and viva voce. Give direct 2-3 sentence answers followed by anticipated follow-up questions or counter-examples.',
+    systemPrompt:
+        'Deliver concise, conversational answers tailored for oral exams and viva voce. Give direct 2-3 sentence answers followed by anticipated follow-up questions or counter-examples.',
   );
 
   final String id;

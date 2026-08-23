@@ -35,7 +35,9 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final session = ref.read(currentQuizProvider);
       if (session != null && session.isMockTest) {
-        final totalSeconds = MockTestConfig.getDurationSeconds(session.totalQuestions);
+        final totalSeconds = MockTestConfig.getDurationSeconds(
+          session.totalQuestions,
+        );
         setState(() {
           _secondsRemaining = totalSeconds;
         });
@@ -101,9 +103,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
         answerList.add(-1); // Unanswered
       }
 
-      updatedQuestions.add(q.copyWith(
-        selectedIndex: selected,
-      ));
+      updatedQuestions.add(q.copyWith(selectedIndex: selected));
     }
 
     final completedSession = session.copyWith(
@@ -117,16 +117,18 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
 
     // Save finalized session atomically and idempotently
     try {
-      await ref.read(quizRepositoryProvider).finalizeQuizSession(completedSession);
+      await ref
+          .read(quizRepositoryProvider)
+          .finalizeQuizSession(completedSession);
       ref.read(currentQuizProvider.notifier).state = completedSession;
       if (mounted) {
         context.pushReplacement('/result');
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error saving quiz: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error saving quiz: $e')));
         context.pushReplacement('/result');
       }
     } finally {
@@ -159,7 +161,10 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
               _finalizeQuiz();
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
-            child: const Text('Submit Now', style: TextStyle(color: Colors.white)),
+            child: const Text(
+              'Submit Now',
+              style: TextStyle(color: Colors.white),
+            ),
           ),
         ],
       ),
@@ -179,7 +184,10 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
             children: [
               const Text('No quiz active.'),
               const SizedBox(height: 12),
-              CustomButton(text: 'Go to Practice', onPressed: () => context.go('/practice')),
+              CustomButton(
+                text: 'Go to Practice',
+                onPressed: () => context.go('/practice'),
+              ),
             ],
           ),
         ),
@@ -201,7 +209,8 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                 children: [
                   Expanded(
                     child: ScreenHeader(
-                      title: 'Q ${_currentIndex + 1} of ${session.questions.length}',
+                      title:
+                          'Q ${_currentIndex + 1} of ${session.questions.length}',
                       onBack: () {
                         _showSubmitConfirmation(session);
                       },
@@ -209,14 +218,23 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                   ),
                   if (session.isMockTest)
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
                       decoration: BoxDecoration(
                         color: _secondsRemaining < 120
                             ? AppColors.error.withOpacity(0.15)
-                            : (isDark ? AppColors.darkSurface : AppColors.lightSurface),
+                            : (isDark
+                                  ? AppColors.darkSurface
+                                  : AppColors.lightSurface),
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
-                          color: _secondsRemaining < 120 ? AppColors.error : (isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                          color: _secondsRemaining < 120
+                              ? AppColors.error
+                              : (isDark
+                                    ? AppColors.darkBorder
+                                    : AppColors.lightBorder),
                         ),
                       ),
                       child: Row(
@@ -224,7 +242,9 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                           Icon(
                             LucideIcons.timer,
                             size: 15,
-                            color: _secondsRemaining < 120 ? AppColors.error : AppColors.accentAmber,
+                            color: _secondsRemaining < 120
+                                ? AppColors.error
+                                : AppColors.accentAmber,
                           ),
                           const SizedBox(width: 6),
                           Text(
@@ -232,7 +252,9 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                             style: AppTextStyles.monoBold(
                               context,
                               fontSize: 13,
-                              color: _secondsRemaining < 120 ? AppColors.error : null,
+                              color: _secondsRemaining < 120
+                                  ? AppColors.error
+                                  : null,
                             ),
                           ),
                         ],
@@ -253,11 +275,17 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                       onTap: () => setState(() => _currentIndex = index),
                       child: Container(
                         height: 6,
-                        margin: EdgeInsets.only(right: index == session.questions.length - 1 ? 0 : 4),
+                        margin: EdgeInsets.only(
+                          right: index == session.questions.length - 1 ? 0 : 4,
+                        ),
                         decoration: BoxDecoration(
                           color: isCurrent
                               ? AppColors.primary
-                              : (isAnswered ? AppColors.accentTeal : (isDark ? AppColors.darkBorder : AppColors.lightBorder)),
+                              : (isAnswered
+                                    ? AppColors.accentTeal
+                                    : (isDark
+                                          ? AppColors.darkBorder
+                                          : AppColors.lightBorder)),
                           borderRadius: BorderRadius.circular(99),
                         ),
                       ),
@@ -271,7 +299,11 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
               CustomCard(
                 child: Text(
                   currentQ.question,
-                  style: AppTextStyles.body(context, fontSize: 16, fontWeight: FontWeight.w700).copyWith(height: 1.4),
+                  style: AppTextStyles.body(
+                    context,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ).copyWith(height: 1.4),
                 ),
               ),
               const SizedBox(height: 16),
@@ -280,7 +312,8 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
               Expanded(
                 child: ListView.separated(
                   itemCount: currentQ.options.length,
-                  separatorBuilder: (context, index) => const SizedBox(height: 10),
+                  separatorBuilder: (context, index) =>
+                      const SizedBox(height: 10),
                   itemBuilder: (context, index) {
                     final isSelected = selectedAnswer == index;
 
@@ -292,13 +325,24 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                       },
                       borderRadius: BorderRadius.circular(12),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
                         decoration: BoxDecoration(
                           color: isSelected
-                              ? (isDark ? AppColors.primary.withOpacity(0.25) : AppColors.primaryLight)
-                              : (isDark ? AppColors.darkSurface : AppColors.lightSurface),
+                              ? (isDark
+                                    ? AppColors.primary.withOpacity(0.25)
+                                    : AppColors.primaryLight)
+                              : (isDark
+                                    ? AppColors.darkSurface
+                                    : AppColors.lightSurface),
                           border: Border.all(
-                            color: isSelected ? AppColors.primary : (isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                            color: isSelected
+                                ? AppColors.primary
+                                : (isDark
+                                      ? AppColors.darkBorder
+                                      : AppColors.lightBorder),
                             width: isSelected ? 2.0 : 1.0,
                           ),
                           borderRadius: BorderRadius.circular(12),
@@ -310,21 +354,35 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                               height: 22,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                color: isSelected ? AppColors.primary : Colors.transparent,
+                                color: isSelected
+                                    ? AppColors.primary
+                                    : Colors.transparent,
                                 border: Border.all(
-                                  color: isSelected ? AppColors.primary : (isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                                  color: isSelected
+                                      ? AppColors.primary
+                                      : (isDark
+                                            ? AppColors.darkBorder
+                                            : AppColors.lightBorder),
                                   width: 2,
                                 ),
                               ),
                               alignment: Alignment.center,
                               child: isSelected
-                                  ? const Icon(LucideIcons.check, size: 13, color: Colors.white)
+                                  ? const Icon(
+                                      LucideIcons.check,
+                                      size: 13,
+                                      color: Colors.white,
+                                    )
                                   : Text(
-                                      String.fromCharCode(65 + index), // A, B, C, D
+                                      String.fromCharCode(
+                                        65 + index,
+                                      ), // A, B, C, D
                                       style: TextStyle(
                                         fontSize: 11,
                                         fontWeight: FontWeight.w700,
-                                        color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                                        color: isDark
+                                            ? AppColors.darkTextSecondary
+                                            : AppColors.lightTextSecondary,
                                       ),
                                     ),
                             ),
@@ -335,7 +393,9 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                                 style: AppTextStyles.body(
                                   context,
                                   fontSize: 14,
-                                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                                  fontWeight: isSelected
+                                      ? FontWeight.w700
+                                      : FontWeight.w500,
                                 ),
                               ),
                             ),
@@ -365,13 +425,18 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                     flex: 2,
                     child: CustomButton(
                       text: _currentIndex == session.questions.length - 1
-                          ? (_isSubmitting ? 'Calculating Score...' : 'Submit Quiz')
+                          ? (_isSubmitting
+                                ? 'Calculating Score...'
+                                : 'Submit Quiz')
                           : 'Next Question',
-                      icon: _currentIndex == session.questions.length - 1 ? LucideIcons.checkCircle : LucideIcons.arrowRight,
+                      icon: _currentIndex == session.questions.length - 1
+                          ? LucideIcons.checkCircle
+                          : LucideIcons.arrowRight,
                       onPressed: _isSubmitting
                           ? null
                           : () {
-                              if (_currentIndex == session.questions.length - 1) {
+                              if (_currentIndex ==
+                                  session.questions.length - 1) {
                                 _showSubmitConfirmation(session);
                               } else {
                                 setState(() => _currentIndex++);

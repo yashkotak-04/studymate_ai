@@ -32,12 +32,8 @@ class AppTheme {
           color: AppColors.lightTextPrimary,
           fontWeight: FontWeight.w700,
         ),
-        bodyLarge: GoogleFonts.inter(
-          color: AppColors.lightTextPrimary,
-        ),
-        bodyMedium: GoogleFonts.inter(
-          color: AppColors.lightTextSecondary,
-        ),
+        bodyLarge: GoogleFonts.inter(color: AppColors.lightTextPrimary),
+        bodyMedium: GoogleFonts.inter(color: AppColors.lightTextSecondary),
       ),
       appBarTheme: const AppBarTheme(
         backgroundColor: AppColors.lightBackground,
@@ -89,12 +85,8 @@ class AppTheme {
           color: AppColors.darkTextPrimary,
           fontWeight: FontWeight.w700,
         ),
-        bodyLarge: GoogleFonts.inter(
-          color: AppColors.darkTextPrimary,
-        ),
-        bodyMedium: GoogleFonts.inter(
-          color: AppColors.darkTextSecondary,
-        ),
+        bodyLarge: GoogleFonts.inter(color: AppColors.darkTextPrimary),
+        bodyMedium: GoogleFonts.inter(color: AppColors.darkTextSecondary),
       ),
       appBarTheme: const AppBarTheme(
         backgroundColor: AppColors.darkBackground,

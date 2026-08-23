@@ -57,10 +57,12 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               ScreenHeader(
-                title: session.isMockTest ? 'Mock Exam Results' : 'Quiz Results',
+                title: session.isMockTest
+                    ? 'Mock Exam Results'
+                    : 'Quiz Results',
                 onBack: () => context.go('/'),
               ),
-              
+
               // Score Overview Card
               CustomCard(
                 child: Column(
@@ -70,12 +72,26 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                       value: pct.toDouble(),
                       size: 116,
                       strokeWidth: 10,
-                      color: isSuccess ? AppColors.success : (pct >= 40 ? AppColors.warning : AppColors.error),
+                      color: isSuccess
+                          ? AppColors.success
+                          : (pct >= 40 ? AppColors.warning : AppColors.error),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Text('$score/${questions.length}', style: AppTextStyles.monoBold(context, fontSize: 26)),
-                          Text('$pct% Score', style: AppTextStyles.bodySecondary(context, fontSize: 12)),
+                          Text(
+                            '$score/${questions.length}',
+                            style: AppTextStyles.monoBold(
+                              context,
+                              fontSize: 26,
+                            ),
+                          ),
+                          Text(
+                            '$pct% Score',
+                            style: AppTextStyles.bodySecondary(
+                              context,
+                              fontSize: 12,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -84,9 +100,13 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                       pct >= 80
                           ? 'Outstanding! You have strong mastery over this topic.'
                           : pct >= 60
-                              ? 'Solid performance! A quick revision will reinforce the weak areas.'
-                              : 'Keep practicing! Review the detailed explanations below to master these concepts.',
-                      style: AppTextStyles.body(context, fontSize: 13, fontWeight: FontWeight.w500),
+                          ? 'Solid performance! A quick revision will reinforce the weak areas.'
+                          : 'Keep practicing! Review the detailed explanations below to master these concepts.',
+                      style: AppTextStyles.body(
+                        context,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 12),
@@ -100,12 +120,28 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                 children: [
                   Expanded(
                     child: CustomCard(
-                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 12,
+                        horizontal: 8,
+                      ),
                       child: Column(
                         children: [
-                          Text('$score', style: AppTextStyles.monoBold(context, fontSize: 20, color: AppColors.success)),
+                          Text(
+                            '$score',
+                            style: AppTextStyles.monoBold(
+                              context,
+                              fontSize: 20,
+                              color: AppColors.success,
+                            ),
+                          ),
                           const SizedBox(height: 2),
-                          Text('Correct', style: AppTextStyles.bodySecondary(context, fontSize: 11)),
+                          Text(
+                            'Correct',
+                            style: AppTextStyles.bodySecondary(
+                              context,
+                              fontSize: 11,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -113,12 +149,28 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: CustomCard(
-                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 12,
+                        horizontal: 8,
+                      ),
                       child: Column(
                         children: [
-                          Text('${questions.length - score}', style: AppTextStyles.monoBold(context, fontSize: 20, color: AppColors.error)),
+                          Text(
+                            '${questions.length - score}',
+                            style: AppTextStyles.monoBold(
+                              context,
+                              fontSize: 20,
+                              color: AppColors.error,
+                            ),
+                          ),
                           const SizedBox(height: 2),
-                          Text('Incorrect', style: AppTextStyles.bodySecondary(context, fontSize: 11)),
+                          Text(
+                            'Incorrect',
+                            style: AppTextStyles.bodySecondary(
+                              context,
+                              fontSize: 11,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -126,12 +178,28 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: CustomCard(
-                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 12,
+                        horizontal: 8,
+                      ),
                       child: Column(
                         children: [
-                          Text('$durationMins m', style: AppTextStyles.monoBold(context, fontSize: 20, color: AppColors.primary)),
+                          Text(
+                            '$durationMins m',
+                            style: AppTextStyles.monoBold(
+                              context,
+                              fontSize: 20,
+                              color: AppColors.primary,
+                            ),
+                          ),
                           const SizedBox(height: 2),
-                          Text('Duration', style: AppTextStyles.bodySecondary(context, fontSize: 11)),
+                          Text(
+                            'Duration',
+                            style: AppTextStyles.bodySecondary(
+                              context,
+                              fontSize: 11,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -140,22 +208,29 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
               ),
               const SizedBox(height: 18),
 
-              Text('Detailed Question Review', style: AppTextStyles.displayBold(context, fontSize: 16)),
+              Text(
+                'Detailed Question Review',
+                style: AppTextStyles.displayBold(context, fontSize: 16),
+              ),
               const SizedBox(height: 10),
 
               ListView.separated(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: questions.length,
-                separatorBuilder: (context, index) => const SizedBox(height: 10),
+                separatorBuilder: (context, index) =>
+                    const SizedBox(height: 10),
                 itemBuilder: (context, i) {
                   final q = questions[i];
-                  final isAnswered = q.selectedIndex != null && q.selectedIndex! >= 0;
-                  final isCorrect = isAnswered && q.selectedIndex == q.correctIndex;
+                  final isAnswered =
+                      q.selectedIndex != null && q.selectedIndex! >= 0;
+                  final isCorrect =
+                      isAnswered && q.selectedIndex == q.correctIndex;
                   final isOpen = _expandedIndex == i;
 
                   return CustomCard(
-                    onTap: () => setState(() => _expandedIndex = isOpen ? null : i),
+                    onTap: () =>
+                        setState(() => _expandedIndex = isOpen ? null : i),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
@@ -168,12 +243,16 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                                 shape: BoxShape.circle,
                                 color: !isAnswered
                                     ? Colors.grey
-                                    : (isCorrect ? AppColors.success : AppColors.error),
+                                    : (isCorrect
+                                          ? AppColors.success
+                                          : AppColors.error),
                               ),
                               child: Icon(
                                 !isAnswered
                                     ? LucideIcons.minus
-                                    : (isCorrect ? LucideIcons.check : LucideIcons.x),
+                                    : (isCorrect
+                                          ? LucideIcons.check
+                                          : LucideIcons.x),
                                 size: 14,
                                 color: Colors.white,
                               ),
@@ -182,13 +261,21 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                             Expanded(
                               child: Text(
                                 '${i + 1}. ${q.question}',
-                                style: AppTextStyles.body(context, fontSize: 13, fontWeight: FontWeight.w600),
+                                style: AppTextStyles.body(
+                                  context,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             ),
                             Icon(
-                              isOpen ? LucideIcons.chevronUp : LucideIcons.chevronDown,
+                              isOpen
+                                  ? LucideIcons.chevronUp
+                                  : LucideIcons.chevronDown,
                               size: 16,
-                              color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                              color: isDark
+                                  ? AppColors.darkTextSecondary
+                                  : AppColors.lightTextSecondary,
                             ),
                           ],
                         ),
@@ -200,50 +287,74 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 if (isAnswered)
-                                  Text.rich(TextSpan(
-                                    text: 'Your choice: ',
-                                    style: AppTextStyles.bodySecondary(context, fontSize: 13),
-                                    children: [
-                                      TextSpan(
-                                        text: q.options[q.selectedIndex!],
-                                        style: AppTextStyles.body(
-                                          context,
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w700,
-                                          color: isCorrect ? AppColors.success : AppColors.error,
-                                        ),
+                                  Text.rich(
+                                    TextSpan(
+                                      text: 'Your choice: ',
+                                      style: AppTextStyles.bodySecondary(
+                                        context,
+                                        fontSize: 13,
                                       ),
-                                    ],
-                                  ))
+                                      children: [
+                                        TextSpan(
+                                          text: q.options[q.selectedIndex!],
+                                          style: AppTextStyles.body(
+                                            context,
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w700,
+                                            color: isCorrect
+                                                ? AppColors.success
+                                                : AppColors.error,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  )
                                 else
-                                  Text('Unanswered', style: AppTextStyles.body(context, fontSize: 13, color: Colors.orange)),
+                                  Text(
+                                    'Unanswered',
+                                    style: AppTextStyles.body(
+                                      context,
+                                      fontSize: 13,
+                                      color: Colors.orange,
+                                    ),
+                                  ),
                                 const SizedBox(height: 4),
                                 if (!isCorrect)
-                                  Text.rich(TextSpan(
-                                    text: 'Correct answer: ',
-                                    style: AppTextStyles.bodySecondary(context, fontSize: 13),
-                                    children: [
-                                      TextSpan(
-                                        text: q.options[q.correctIndex],
-                                        style: AppTextStyles.body(
-                                          context,
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w700,
-                                          color: AppColors.success,
-                                        ),
+                                  Text.rich(
+                                    TextSpan(
+                                      text: 'Correct answer: ',
+                                      style: AppTextStyles.bodySecondary(
+                                        context,
+                                        fontSize: 13,
                                       ),
-                                    ],
-                                  )),
+                                      children: [
+                                        TextSpan(
+                                          text: q.options[q.correctIndex],
+                                          style: AppTextStyles.body(
+                                            context,
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w700,
+                                            color: AppColors.success,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
                                 const SizedBox(height: 8),
                                 Container(
                                   padding: const EdgeInsets.all(10),
                                   decoration: BoxDecoration(
-                                    color: isDark ? AppColors.darkBackground : AppColors.lightBackground,
+                                    color: isDark
+                                        ? AppColors.darkBackground
+                                        : AppColors.lightBackground,
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Text(
                                     '💡 ${q.explanation}',
-                                    style: AppTextStyles.bodySecondary(context, fontSize: 12).copyWith(height: 1.4),
+                                    style: AppTextStyles.bodySecondary(
+                                      context,
+                                      fontSize: 12,
+                                    ).copyWith(height: 1.4),
                                   ),
                                 ),
                               ],

@@ -28,7 +28,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       if (authState.isLoading) return null;
 
       final isLoggedIn = authState.valueOrNull != null;
-      final isAuthScreen = state.matchedLocation == '/login' ||
+      final isAuthScreen =
+          state.matchedLocation == '/login' ||
           state.matchedLocation == '/signup' ||
           state.matchedLocation == '/forgot-password';
 
@@ -69,10 +70,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/onboarding',
         builder: (context, state) => const OnboardingScreen(),
       ),
-      GoRoute(
-        path: '/login',
-        builder: (context, state) => const LoginScreen(),
-      ),
+      GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
       GoRoute(
         path: '/signup',
         builder: (context, state) => const SignupScreen(),
@@ -81,10 +79,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/forgot-password',
         builder: (context, state) => const ForgotPasswordScreen(),
       ),
-      GoRoute(
-        path: '/quiz',
-        builder: (context, state) => const QuizScreen(),
-      ),
+      GoRoute(path: '/quiz', builder: (context, state) => const QuizScreen()),
       GoRoute(
         path: '/result',
         builder: (context, state) => const ResultScreen(),

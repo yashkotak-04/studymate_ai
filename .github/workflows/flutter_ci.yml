@@ -31,10 +31,13 @@ jobs:
         run: flutter pub get
 
       - name: Verify Code Formatting
-        run: dart format --output=none --set-exit-if-changed .
+        run: dart format --output=none --set-exit-if-changed lib test integration_test
 
       - name: Analyze Project Code
         run: flutter analyze
 
       - name: Run Test Suite
         run: flutter test
+
+      - name: Build Verification (Debug APK)
+        run: flutter build apk --debug

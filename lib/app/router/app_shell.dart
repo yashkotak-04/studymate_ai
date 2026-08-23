@@ -6,10 +6,7 @@ import '../theme/app_colors.dart';
 class AppShell extends StatelessWidget {
   final StatefulNavigationShell navigationShell;
 
-  const AppShell({
-    super.key,
-    required this.navigationShell,
-  });
+  const AppShell({super.key, required this.navigationShell});
 
   void _onItemTapped(int index, BuildContext context) {
     navigationShell.goBranch(
@@ -27,7 +24,9 @@ class AppShell extends StatelessWidget {
       bottomNavigationBar: NavigationBar(
         selectedIndex: navigationShell.currentIndex,
         onDestinationSelected: (index) => _onItemTapped(index, context),
-        backgroundColor: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+        backgroundColor: isDark
+            ? AppColors.darkSurface
+            : AppColors.lightSurface,
         indicatorColor: AppColors.primary.withOpacity(0.2),
         destinations: const [
           NavigationDestination(
@@ -37,17 +36,26 @@ class AppShell extends StatelessWidget {
           ),
           NavigationDestination(
             icon: Icon(LucideIcons.messageCircle),
-            selectedIcon: Icon(LucideIcons.messageCircle, color: AppColors.primary),
+            selectedIcon: Icon(
+              LucideIcons.messageCircle,
+              color: AppColors.primary,
+            ),
             label: 'Chat',
           ),
           NavigationDestination(
             icon: Icon(LucideIcons.listChecks),
-            selectedIcon: Icon(LucideIcons.listChecks, color: AppColors.primary),
+            selectedIcon: Icon(
+              LucideIcons.listChecks,
+              color: AppColors.primary,
+            ),
             label: 'Practice',
           ),
           NavigationDestination(
             icon: Icon(LucideIcons.trendingUp),
-            selectedIcon: Icon(LucideIcons.trendingUp, color: AppColors.primary),
+            selectedIcon: Icon(
+              LucideIcons.trendingUp,
+              color: AppColors.primary,
+            ),
             label: 'Progress',
           ),
           NavigationDestination(

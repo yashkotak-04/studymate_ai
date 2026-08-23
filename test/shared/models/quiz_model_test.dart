@@ -8,7 +8,8 @@ void main() {
         question: 'What is a Semaphore?',
         options: ['Mutex', 'Integer Variable', 'Process', 'Thread'],
         correctIndex: 1,
-        explanation: 'A semaphore is an integer variable used for synchronization.',
+        explanation:
+            'A semaphore is an integer variable used for synchronization.',
       );
 
       expect(q.isValid, isTrue);
@@ -63,11 +64,14 @@ void main() {
       expect(session.isMockTest, isFalse);
     });
 
-    test('MockTestConfig calculates duration minutes and seconds consistently', () {
-      expect(MockTestConfig.getDurationMinutes(10), 20);
-      expect(MockTestConfig.getDurationSeconds(10), 1200);
-      expect(MockTestConfig.getDurationMinutes(5), 10);
-      expect(MockTestConfig.getDurationSeconds(5), 600);
-    });
+    test(
+      'MockTestConfig calculates duration minutes and seconds consistently',
+      () {
+        expect(MockTestConfig.getDurationMinutes(10), 20);
+        expect(MockTestConfig.getDurationSeconds(10), 1200);
+        expect(MockTestConfig.getDurationMinutes(5), 10);
+        expect(MockTestConfig.getDurationSeconds(5), 600);
+      },
+    );
   });
 }

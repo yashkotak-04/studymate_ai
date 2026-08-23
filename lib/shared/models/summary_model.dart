@@ -18,7 +18,10 @@ class GeneratedSummary {
   factory GeneratedSummary.fromJson(Map<String, dynamic> json) {
     List<String> parseList(dynamic raw) {
       if (raw is List) {
-        return raw.map((e) => e.toString().trim()).where((e) => e.isNotEmpty).toList();
+        return raw
+            .map((e) => e.toString().trim())
+            .where((e) => e.isNotEmpty)
+            .toList();
       }
       if (raw is String && raw.trim().isNotEmpty) {
         return [raw.trim()];
@@ -65,7 +68,10 @@ class SummaryDocument {
     required this.createdAt,
   });
 
-  factory SummaryDocument.fromJson(Map<String, dynamic> json, String documentId) {
+  factory SummaryDocument.fromJson(
+    Map<String, dynamic> json,
+    String documentId,
+  ) {
     DateTime parseDate(dynamic val) {
       if (val is Timestamp) return val.toDate();
       if (val is String) return DateTime.tryParse(val) ?? DateTime.now();

@@ -27,11 +27,14 @@ class StudyPlanRepository {
         .limit(1)
         .snapshots()
         .map((snapshot) {
-      if (snapshot.docs.isNotEmpty) {
-        return StudyPlan.fromJson(snapshot.docs.first.data(), snapshot.docs.first.id);
-      }
-      return null;
-    });
+          if (snapshot.docs.isNotEmpty) {
+            return StudyPlan.fromJson(
+              snapshot.docs.first.data(),
+              snapshot.docs.first.id,
+            );
+          }
+          return null;
+        });
   }
 
   Future<void> savePlan(StudyPlan plan) async {

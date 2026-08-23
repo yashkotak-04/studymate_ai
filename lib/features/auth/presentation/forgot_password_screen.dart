@@ -12,7 +12,8 @@ class ForgotPasswordScreen extends ConsumerStatefulWidget {
   const ForgotPasswordScreen({super.key});
 
   @override
-  ConsumerState<ForgotPasswordScreen> createState() => _ForgotPasswordScreenState();
+  ConsumerState<ForgotPasswordScreen> createState() =>
+      _ForgotPasswordScreenState();
 }
 
 class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
@@ -30,7 +31,9 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   Future<void> _sendResetEmail() async {
     final email = _emailController.text.trim();
     if (email.isEmpty) {
-      setState(() => _errorMessage = 'Please enter your registered email address.');
+      setState(
+        () => _errorMessage = 'Please enter your registered email address.',
+      );
       return;
     }
 
@@ -71,16 +74,9 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const SizedBox(height: 12),
-              ScreenHeader(
-                title: '',
-                onBack: () => context.pop(),
-              ),
+              ScreenHeader(title: '', onBack: () => context.pop()),
               const SizedBox(height: 24),
-              Icon(
-                LucideIcons.keyRound,
-                size: 56,
-                color: AppColors.primary,
-              ),
+              Icon(LucideIcons.keyRound, size: 56, color: AppColors.primary),
               const SizedBox(height: 20),
               Text(
                 'Reset Password',
@@ -117,21 +113,34 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                   decoration: BoxDecoration(
                     color: AppColors.success.withOpacity(0.12),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.success.withOpacity(0.4)),
+                    border: Border.all(
+                      color: AppColors.success.withOpacity(0.4),
+                    ),
                   ),
                   child: Column(
                     children: [
-                      const Icon(LucideIcons.checkCircle2, color: AppColors.success, size: 32),
+                      const Icon(
+                        LucideIcons.checkCircle2,
+                        color: AppColors.success,
+                        size: 32,
+                      ),
                       const SizedBox(height: 8),
                       Text(
                         'Password Reset Email Sent!',
-                        style: AppTextStyles.body(context, fontWeight: FontWeight.w700, color: AppColors.success),
+                        style: AppTextStyles.body(
+                          context,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.success,
+                        ),
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 4),
                       Text(
                         'Please check your inbox (and spam folder) for instructions to reset your password.',
-                        style: AppTextStyles.bodySecondary(context, fontSize: 13),
+                        style: AppTextStyles.bodySecondary(
+                          context,
+                          fontSize: 13,
+                        ),
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 16),
@@ -151,14 +160,24 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                     prefixIcon: const Icon(LucideIcons.mail, size: 20),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                      borderSide: BorderSide(
+                        color: isDark
+                            ? AppColors.darkBorder
+                            : AppColors.lightBorder,
+                      ),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                      borderSide: BorderSide(
+                        color: isDark
+                            ? AppColors.darkBorder
+                            : AppColors.lightBorder,
+                      ),
                     ),
                     filled: true,
-                    fillColor: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+                    fillColor: isDark
+                        ? AppColors.darkSurface
+                        : AppColors.lightSurface,
                   ),
                   keyboardType: TextInputType.emailAddress,
                   style: AppTextStyles.body(context),

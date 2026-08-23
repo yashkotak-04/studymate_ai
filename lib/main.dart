@@ -46,7 +46,9 @@ void main() async {
   // Remove native splash screen
   FlutterNativeSplash.remove();
 
-  if (!firebaseSuccess && firebaseError != null && !firebaseError.contains('duplicate-app')) {
+  if (!firebaseSuccess &&
+      firebaseError != null &&
+      !firebaseError.contains('duplicate-app')) {
     runApp(
       FirebaseBootstrapErrorApp(
         errorMessage: firebaseError,
@@ -116,18 +118,29 @@ class FirebaseBootstrapErrorApp extends StatelessWidget {
                     color: AppColors.error.withOpacity(0.15),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(LucideIcons.cloudOff, size: 36, color: AppColors.error),
+                  child: const Icon(
+                    LucideIcons.cloudOff,
+                    size: 36,
+                    color: AppColors.error,
+                  ),
                 ),
                 const SizedBox(height: 24),
                 Text(
                   'Unable to Connect to StudyMate AI',
-                  style: AppTextStyles.displayBold(context, fontSize: 22, color: Colors.white),
+                  style: AppTextStyles.displayBold(
+                    context,
+                    fontSize: 22,
+                    color: Colors.white,
+                  ),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 12),
                 Text(
                   'We encountered a configuration or network issue while starting the Firebase cloud services.',
-                  style: AppTextStyles.bodySecondary(context, color: const Color(0xFF94A3B8)),
+                  style: AppTextStyles.bodySecondary(
+                    context,
+                    color: const Color(0xFF94A3B8),
+                  ),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 20),
@@ -156,10 +169,15 @@ class FirebaseBootstrapErrorApp extends StatelessWidget {
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                   icon: const Icon(LucideIcons.refreshCw, size: 18),
-                  label: const Text('Retry Connection', style: TextStyle(fontWeight: FontWeight.w700)),
+                  label: const Text(
+                    'Retry Connection',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
                 ),
               ],
             ),

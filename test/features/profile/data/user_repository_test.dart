@@ -6,10 +6,18 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:studymate_ai/features/profile/data/user_repository.dart';
 
 class MockFirebaseFirestore extends Mock implements FirebaseFirestore {}
-class MockCollectionReference extends Mock implements CollectionReference<Map<String, dynamic>> {}
-class MockDocumentReference extends Mock implements DocumentReference<Map<String, dynamic>> {}
-class MockDocumentSnapshot extends Mock implements DocumentSnapshot<Map<String, dynamic>> {}
+
+class MockCollectionReference extends Mock
+    implements CollectionReference<Map<String, dynamic>> {}
+
+class MockDocumentReference extends Mock
+    implements DocumentReference<Map<String, dynamic>> {}
+
+class MockDocumentSnapshot extends Mock
+    implements DocumentSnapshot<Map<String, dynamic>> {}
+
 class MockUser extends Mock implements User {}
+
 class FakeSetOptions extends Fake implements SetOptions {}
 
 void main() {
@@ -31,7 +39,7 @@ void main() {
     mockDocument = MockDocumentReference();
     mockSnapshot = MockDocumentSnapshot();
     mockUser = MockUser();
-    
+
     when(() => mockFirestore.collection('users')).thenReturn(mockCollection);
     when(() => mockCollection.doc(any())).thenReturn(mockDocument);
     when(() => mockDocument.get()).thenAnswer((_) async => mockSnapshot);
@@ -39,7 +47,7 @@ void main() {
     when(() => mockUser.uid).thenReturn('test_uid');
     when(() => mockUser.email).thenReturn('test@example.com');
     when(() => mockUser.displayName).thenReturn('Test User');
-    
+
     userRepository = UserRepository(mockFirestore);
   });
 
@@ -49,7 +57,9 @@ void main() {
 
       await userRepository.createUserProfile(mockUser);
 
-      verify(() => mockDocument.set(any(that: isA<Map<String, dynamic>>()), any())).called(1);
+      verify(
+        () => mockDocument.set(any(that: isA<Map<String, dynamic>>()), any()),
+      ).called(1);
     });
   });
 }
