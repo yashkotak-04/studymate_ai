@@ -366,6 +366,70 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                   );
                 },
               ),
+              if (score < questions.length) ...[
+                const SizedBox(height: 16),
+                CustomCard(
+                  onTap: () {
+                    final wrongQuestions = questions
+                        .where((q) => q.selectedIndex != q.correctIndex)
+                        .toList();
+                    final sample = wrongQuestions.isNotEmpty
+                        ? wrongQuestions.first
+                        : questions.first;
+                    context.go(
+                      '/chat',
+                      extra: {
+                        'initialPrompt':
+                            'Can you explain why the answer to this question is "${sample.options[sample.correctIndex]}":\n\n"${sample.question}"',
+                        'subjectId': session.subjectId,
+                      },
+                    );
+                  },
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(
+                          LucideIcons.bot,
+                          color: AppColors.primary,
+                          size: 22,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Clarify Doubts with AI Tutor',
+                              style: AppTextStyles.body(
+                                context,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            Text(
+                              'Get instant step-by-step explanations for missed questions.',
+                              style: AppTextStyles.bodySecondary(
+                                context,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(
+                        LucideIcons.chevronRight,
+                        size: 16,
+                        color: AppColors.primary,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               const SizedBox(height: 24),
 
               Row(

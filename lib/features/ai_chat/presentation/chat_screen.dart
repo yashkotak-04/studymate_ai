@@ -26,7 +26,14 @@ final activeExplanationModeProvider = StateProvider<ExplanationMode>((ref) {
 });
 
 class ChatScreen extends ConsumerStatefulWidget {
-  const ChatScreen({super.key});
+  final String? initialPrompt;
+  final String? initialSubjectId;
+
+  const ChatScreen({
+    super.key,
+    this.initialPrompt,
+    this.initialSubjectId,
+  });
 
   @override
   ConsumerState<ChatScreen> createState() => _ChatScreenState();
@@ -45,6 +52,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   @override
   void initState() {
     super.initState();
+    if (widget.initialPrompt != null && widget.initialPrompt!.isNotEmpty) {
+      _inputController.text = widget.initialPrompt!;
+    }
     _initSpeech();
   }
 
@@ -318,7 +328,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                       }
                       return ListView.separated(
                         itemCount: threads.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 8),
+                        separatorBuilder: (context, index) =>
+                            const SizedBox(height: 8),
                         itemBuilder: (context, index) {
                           final thread = threads[index];
                           final isActive =
@@ -490,7 +501,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     decoration: BoxDecoration(
                       color: isSelected
                           ? (Theme.of(context).brightness == Brightness.dark
-                                ? AppColors.primary.withOpacity(0.2)
+                                ? AppColors.primary.withValues(alpha: 0.2)
                                 : AppColors.primaryLight)
                           : Colors.transparent,
                       borderRadius: BorderRadius.circular(12),
@@ -620,7 +631,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                       ),
                       decoration: BoxDecoration(
                         color: isDark
-                            ? AppColors.primary.withOpacity(0.2)
+                            ? AppColors.primary.withValues(alpha: 0.2)
                             : AppColors.primaryLight,
                         borderRadius: BorderRadius.circular(999),
                       ),
@@ -656,7 +667,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                         vertical: 5,
                       ),
                       decoration: BoxDecoration(
-                        color: AppColors.error.withOpacity(0.15),
+                        color: AppColors.error.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(999),
                         border: Border.all(color: AppColors.error),
                       ),
@@ -790,7 +801,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                                   : AppColors.lightBorder),
                       ),
                       color: _isListening
-                          ? AppColors.error.withOpacity(0.2)
+                          ? AppColors.error.withValues(alpha: 0.2)
                           : (isDark
                                 ? AppColors.darkSurface
                                 : AppColors.lightSurface),
@@ -844,7 +855,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               height: 56,
               decoration: BoxDecoration(
                 color: isDark
-                    ? AppColors.primary.withOpacity(0.2)
+                    ? AppColors.primary.withValues(alpha: 0.2)
                     : AppColors.primaryLight,
                 shape: BoxShape.circle,
               ),

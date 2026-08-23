@@ -105,7 +105,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: '/chat',
-                builder: (context, state) => const ChatScreen(),
+                builder: (context, state) {
+                  final extra = state.extra;
+                  if (extra is Map<String, dynamic>) {
+                    return ChatScreen(
+                      initialPrompt: extra['initialPrompt'] as String?,
+                      initialSubjectId: extra['subjectId'] as String?,
+                    );
+                  }
+                  return const ChatScreen();
+                },
               ),
             ],
           ),

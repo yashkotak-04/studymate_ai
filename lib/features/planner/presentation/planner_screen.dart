@@ -131,7 +131,7 @@ class _PlannerScreenState extends ConsumerState<PlannerScreen> {
                             height: 64,
                             decoration: BoxDecoration(
                               color: isDark
-                                  ? AppColors.primary.withOpacity(0.2)
+                                  ? AppColors.primary.withValues(alpha: 0.2)
                                   : AppColors.primaryLight,
                               shape: BoxShape.circle,
                             ),
@@ -212,7 +212,7 @@ class _PlannerScreenState extends ConsumerState<PlannerScreen> {
                                   ),
                                   decoration: BoxDecoration(
                                     color: isDark
-                                        ? AppColors.primary.withOpacity(0.2)
+                                        ? AppColors.primary.withValues(alpha: 0.2)
                                         : AppColors.primaryLight,
                                     borderRadius: BorderRadius.circular(10),
                                   ),

@@ -25,7 +25,7 @@ class CustomChip extends StatelessWidget {
         ? defaultActiveColor
         : (isDark ? AppColors.darkBorder : AppColors.lightBorder);
     final backgroundColor = isActive
-        ? defaultActiveColor.withOpacity(0.15)
+        ? defaultActiveColor.withValues(alpha: 0.15)
         : (isDark ? AppColors.darkSurface : AppColors.lightSurface);
     final textColor = isActive
         ? defaultActiveColor

@@ -271,7 +271,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   decoration: BoxDecoration(
                     color: isSelected
                         ? (isDark
-                              ? AppColors.primary.withOpacity(0.2)
+                              ? AppColors.primary.withValues(alpha: 0.2)
                               : AppColors.primaryLight)
                         : (isDark
                               ? AppColors.darkSurface

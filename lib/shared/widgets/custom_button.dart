@@ -37,7 +37,7 @@ class CustomButton extends StatelessWidget {
         break;
       case ButtonVariant.secondary:
         backgroundColor = isDark
-            ? AppColors.primary.withOpacity(0.2)
+            ? AppColors.primary.withValues(alpha: 0.2)
             : AppColors.primaryLight;
         textColor = AppColors.primary;
         break;
@@ -59,8 +59,8 @@ class CustomButton extends StatelessWidget {
     final buttonStyle = ElevatedButton.styleFrom(
       backgroundColor: backgroundColor,
       foregroundColor: textColor,
-      disabledBackgroundColor: backgroundColor.withOpacity(0.45),
-      disabledForegroundColor: textColor.withOpacity(0.45),
+      disabledBackgroundColor: backgroundColor.withValues(alpha: 0.45),
+      disabledForegroundColor: textColor.withValues(alpha: 0.45),
       elevation: 0,
       shadowColor: Colors.transparent,
       padding: EdgeInsets.symmetric(

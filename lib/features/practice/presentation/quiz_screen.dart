@@ -224,7 +224,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                       ),
                       decoration: BoxDecoration(
                         color: _secondsRemaining < 120
-                            ? AppColors.error.withOpacity(0.15)
+                            ? AppColors.error.withValues(alpha: 0.15)
                             : (isDark
                                   ? AppColors.darkSurface
                                   : AppColors.lightSurface),
@@ -332,7 +332,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                         decoration: BoxDecoration(
                           color: isSelected
                               ? (isDark
-                                    ? AppColors.primary.withOpacity(0.25)
+                                    ? AppColors.primary.withValues(alpha: 0.25)
                                     : AppColors.primaryLight)
                               : (isDark
                                     ? AppColors.darkSurface

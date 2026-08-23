@@ -23,8 +23,12 @@ class DashboardScreen extends ConsumerWidget {
     final subjectProgress = ref.watch(subjectProgressProvider).value;
 
     final String todayDate = DateFormat('EEEE, d MMMM').format(DateTime.now());
+    final hour = DateTime.now().hour;
+    final timeGreeting = hour < 12
+        ? 'Good Morning'
+        : (hour < 17 ? 'Good Afternoon' : 'Good Evening');
     final String greeting =
-        'Good Morning, ${userProfile?.displayName?.split(' ').first ?? 'Student'} 👋';
+        '$timeGreeting, ${userProfile?.displayName?.split(' ').first ?? 'Student'} 👋';
     final int streak = userProfile?.currentStreak ?? 0;
 
     // Compute overall progress
@@ -82,8 +86,10 @@ class DashboardScreen extends ConsumerWidget {
                     ),
                     alignment: Alignment.center,
                     child: Text(
-                      userProfile?.displayName?.substring(0, 1).toUpperCase() ??
-                          'U',
+                      (userProfile?.displayName != null &&
+                              userProfile!.displayName!.isNotEmpty)
+                          ? userProfile.displayName![0].toUpperCase()
+                          : 'S',
                       style: AppTextStyles.displayBold(
                         context,
                         fontSize: 15,
@@ -152,6 +158,60 @@ class DashboardScreen extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 14),
+
+              // Target Exam Countdown Banner
+              if (userProfile?.targetExam != null &&
+                  userProfile!.targetExam!.isNotEmpty) ...[
+                CustomCard(
+                  onTap: () => context.push('/planner'),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: AppColors.accentAmber.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(
+                          LucideIcons.target,
+                          color: AppColors.accentAmber,
+                          size: 22,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              userProfile.targetExam!,
+                              style: AppTextStyles.body(
+                                context,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            Text(
+                              userProfile.examDate != null
+                                  ? '${userProfile.examDate!.difference(DateTime.now()).inDays.clamp(0, 999)} days remaining (${DateFormat('dd MMM yyyy').format(userProfile.examDate!)})'
+                                  : 'Target Exam Active • Tap to plan timetable',
+                              style: AppTextStyles.bodySecondary(
+                                context,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(
+                        LucideIcons.chevronRight,
+                        size: 16,
+                        color: AppColors.primary,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 14),
+              ],
 
               // Today's Goal
               CustomCard(
@@ -246,7 +306,10 @@ class DashboardScreen extends ConsumerWidget {
                           }
                         }
                         return InkWell(
-                          onTap: () => context.go('/practice'),
+                          onTap: () => context.go(
+                            '/practice',
+                            extra: {'subjectId': subject.id},
+                          ),
                           borderRadius: BorderRadius.circular(14),
                           child: Container(
                             width: 116,
@@ -268,7 +331,7 @@ class DashboardScreen extends ConsumerWidget {
                               borderRadius: BorderRadius.circular(14),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.04),
+                                  color: Colors.black.withValues(alpha: 0.04),
                                   blurRadius: 10,
                                   offset: const Offset(0, 4),
                                 ),
@@ -285,7 +348,7 @@ class DashboardScreen extends ConsumerWidget {
                                   child: Container(
                                     decoration: BoxDecoration(
                                       borderRadius: BorderRadius.circular(3),
-                                      color: subject.color.withOpacity(0.5),
+                                      color: subject.color.withValues(alpha: 0.5),
                                     ),
                                   ),
                                 ),
@@ -436,7 +499,7 @@ class DashboardScreen extends ConsumerWidget {
                             style: AppTextStyles.body(
                               context,
                               fontSize: 13,
-                              color: Colors.white.withOpacity(0.85),
+                              color: Colors.white.withValues(alpha: 0.85),
                             ),
                           ),
                         ],
@@ -463,7 +526,10 @@ class DashboardScreen extends ConsumerWidget {
                     backgroundColor: AppColors.primary,
                     customBorder: BorderSide.none,
                     onTap: () {
-                      context.go('/practice');
+                      context.go(
+                        '/practice',
+                        extra: {'subjectId': weakestSubjectId},
+                      );
                     },
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -503,7 +569,7 @@ class DashboardScreen extends ConsumerWidget {
                           style: AppTextStyles.body(
                             context,
                             fontSize: 13,
-                            color: Colors.white.withOpacity(0.85),
+                            color: Colors.white.withValues(alpha: 0.85),
                           ),
                         ),
                         const SizedBox(height: 12),
@@ -565,7 +631,7 @@ class _QuickActionCard extends StatelessWidget {
             height: 34,
             decoration: BoxDecoration(
               color: isDark
-                  ? AppColors.primary.withOpacity(0.2)
+                  ? AppColors.primary.withValues(alpha: 0.2)
                   : AppColors.primaryLight,
               borderRadius: BorderRadius.circular(9),
             ),

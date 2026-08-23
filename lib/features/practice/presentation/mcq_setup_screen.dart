@@ -165,7 +165,7 @@ class _McqSetupScreenState extends ConsumerState<McqSetupScreen> {
                     style: AppTextStyles.bodySecondary(context, fontSize: 12),
                   ),
                   value: _isMockTest,
-                  activeColor: AppColors.primary,
+                  activeThumbColor: AppColors.primary,
                   contentPadding: EdgeInsets.zero,
                   onChanged: (val) {
                     setState(() {

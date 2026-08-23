@@ -27,7 +27,7 @@ class AppShell extends StatelessWidget {
         backgroundColor: isDark
             ? AppColors.darkSurface
             : AppColors.lightSurface,
-        indicatorColor: AppColors.primary.withOpacity(0.2),
+        indicatorColor: AppColors.primary.withValues(alpha: 0.2),
         destinations: const [
           NavigationDestination(
             icon: Icon(LucideIcons.home),

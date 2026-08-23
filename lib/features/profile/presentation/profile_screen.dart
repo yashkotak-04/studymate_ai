@@ -207,7 +207,7 @@ class ProfileScreen extends ConsumerWidget {
                             ),
                             Switch(
                               value: isEnrolled,
-                              activeColor: AppColors.primary,
+                              activeThumbColor: AppColors.primary,
                               onChanged: (val) async {
                                 if (val) {
                                   await ref
@@ -907,7 +907,7 @@ class ProfileScreen extends ConsumerWidget {
                                   vertical: 2,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: AppColors.primary.withOpacity(0.15),
+                                  color: AppColors.primary.withValues(alpha: 0.15),
                                   borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: Text(

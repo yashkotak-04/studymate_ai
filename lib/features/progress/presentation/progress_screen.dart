@@ -816,8 +816,8 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen> {
                             height: 38,
                             decoration: BoxDecoration(
                               color: isPass
-                                  ? AppColors.success.withOpacity(0.15)
-                                  : AppColors.warning.withOpacity(0.15),
+                                  ? AppColors.success.withValues(alpha: 0.15)
+                                  : AppColors.warning.withValues(alpha: 0.15),
                               shape: BoxShape.circle,
                             ),
                             child: Icon(

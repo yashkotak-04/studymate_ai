@@ -846,7 +846,7 @@ class _SummaryScreenState extends ConsumerState<SummaryScreen> {
                     ),
                     decoration: BoxDecoration(
                       color: isDark
-                          ? AppColors.primary.withOpacity(0.2)
+                          ? AppColors.primary.withValues(alpha: 0.2)
                           : AppColors.primaryLight,
                       borderRadius: BorderRadius.circular(999),
                     ),
